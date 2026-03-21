@@ -1,0 +1,150 @@
+name: Mobile Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  android-release:
+    name: Android Release (AAB)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android app bundle
+        run: flutter build appbundle --release
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: build/app/outputs/bundle/release/*.aab
+
+  ios-testflight:
+    name: iOS TestFlight (IPA)
+    runs-on: macos-latest
+    env:
+      IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          required=(
+            IOS_BUNDLE_ID
+            IOS_TEAM_ID
+            IOS_CERTIFICATE_P12_BASE64
+            IOS_CERTIFICATE_PASSWORD
+            IOS_PROVISION_PROFILE_BASE64
+            APP_STORE_CONNECT_KEY_ID
+            APP_STORE_CONNECT_ISSUER_ID
+            APP_STORE_CONNECT_PRIVATE_KEY
+          )
+          for item in "${required[@]}"; do
+            if [ -z "${!item}" ]; then
+              echo "Missing required GitHub secret: $item"
+              exit 1
+            fi
+          done
+
+      - name: Install signing certificate and profile
+        shell: bash
+        run: |
+          KEYCHAIN=build.keychain
+          KEYCHAIN_PASSWORD=""
+
+          echo "$IOS_CERTIFICATE_P12_BASE64" | base64 --decode > certificate.p12
+          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode > profile.mobileprovision
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import certificate.p12 -k "$KEYCHAIN" -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
+
+      - name: Set iOS bundle identifier
+        shell: bash
+        run: |
+          sed -i '' "s/com.example.kutootMobile/$IOS_BUNDLE_ID/g" ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Create ExportOptions
+        shell: bash
+        run: |
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+            <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>teamID</key>
+              <string>$IOS_TEAM_ID</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+            </dict>
+          </plist>
+          EOF
+
+      - name: Build iOS IPA
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+
+      - name: Upload to TestFlight
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          printf "%s" "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
+
+          IPA_PATH=$(ls build/ios/ipa/*.ipa | head -n 1)
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
