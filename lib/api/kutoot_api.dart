@@ -109,12 +109,27 @@ class KutootApi {
   Future<Response> verifyPayment(Map<String, dynamic> data) =>
       _dio.post('/coupons/verify-payment', data: data);
 
+  Future<Response> payWithoutCoupon(Map<String, dynamic> data) =>
+      _dio.post('/coupons/pay-without-coupon', data: data);
+
   // ─── Stamps ───────────────────────────────────────────────────────
   Future<Response> getStamps({Map<String, dynamic>? params}) =>
       _dio.get('/stamps', queryParameters: params);
 
   Future<Response> reserveStamp(int campaignId) =>
       _dio.post('/stamps/reserve', data: {'campaign_id': campaignId});
+
+  Future<Response> getStampReservation(int stampId) =>
+      _dio.get('/stamps/reservation/$stampId');
+
+  Future<Response> createStampReservationOrder(int stampId, int planId) =>
+      _dio.post('/stamps/reservation/$stampId/create-order', data: {'plan_id': planId});
+
+  Future<Response> confirmStampReservation(int stampId, Map<String, dynamic> data) =>
+      _dio.post('/stamps/reservation/$stampId/confirm', data: data);
+
+  Future<Response> cancelStampReservation(int stampId) =>
+      _dio.delete('/stamps/reservation/$stampId');
 
   // ─── Subscriptions ────────────────────────────────────────────────
   Future<Response> getSubscriptionPlans() => _dio.get('/subscriptions/plans');
@@ -130,6 +145,14 @@ class KutootApi {
 
   Future<Response> verifySubscriptionPayment(Map<String, dynamic> data) =>
       _dio.post('/subscriptions/verify-payment', data: data);
+
+  Future<Response> recordSubscriptionConsent(int planId) =>
+      _dio.post('/subscriptions/record-consent', data: {'plan_id': planId});
+
+  Future<Response> setPrimaryCampaign(int campaignId) =>
+      _dio.post('/subscriptions/primary-campaign', data: {'campaign_id': campaignId});
+
+  Future<Response> getAvailableCampaigns() => _dio.get('/subscriptions/available-campaigns');
 
   // ─── Transactions ───────────────────────────────────────────────
   Future<Response> getTransactions({Map<String, dynamic>? params}) =>

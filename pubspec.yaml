@@ -31,6 +31,7 @@ dependencies:
 
   # QR Scanner
   mobile_scanner: ^6.0.2
+  razorpay_flutter: ^1.4.1
 
 dev_dependencies:
   flutter_test:

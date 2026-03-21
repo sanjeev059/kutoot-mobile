@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
+import '../payment/payment_methods_screen.dart';
 
 class SubscriptionsScreen extends StatefulWidget {
   const SubscriptionsScreen({super.key});
@@ -11,12 +13,15 @@ class SubscriptionsScreen extends StatefulWidget {
 
 class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   final _api = KutootApi();
-  List<dynamic> _plans = [];
+  late final Razorpay _razorpay;
+  List<Map<String, dynamic>> _plans = [];
   Map<String, dynamic>? _current;
   bool _loading = true;
   String? _error;
   bool _upgrading = false;
   bool _yearly = false;
+  int? _pendingPlanId;
+  bool _promptingPrimaryCampaign = false;
 
   final _defaultPlans = [
     {'name': 'Free', 'price': 0, 'monthly': 0, 'yearly': 0, 'recommended': false},
@@ -27,7 +32,71 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  Future<void> _onPaymentSuccess(PaymentSuccessResponse response) async {
+    final planId = _pendingPlanId;
+    if (planId == null) return;
+    try {
+      final verifyRes = await _api.verifySubscriptionPayment({
+        'razorpay_payment_id': response.paymentId,
+        'razorpay_order_id': response.orderId,
+        'razorpay_signature': response.signature,
+        'plan_id': planId,
+        'campaign_selections': <Map<String, dynamic>>[],
+      });
+
+      if (!mounted) return;
+      final data = verifyRes.data is Map ? verifyRes.data as Map : {};
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message']?.toString() ?? 'Subscription upgraded successfully')),
+      );
+      await _load();
+      if (data['needs_campaign_selection'] == true) {
+        await _promptPrimaryCampaignSelection();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment verified but plan activation failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _upgrading = false;
+          _pendingPlanId = null;
+        });
+      }
+    }
+  }
+
+  void _onPaymentError(PaymentFailureResponse response) {
+    if (!mounted) return;
+    setState(() {
+      _upgrading = false;
+      _pendingPlanId = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response.message ?? 'Payment failed')),
+    );
+  }
+
+  void _onExternalWallet(ExternalWalletResponse response) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External wallet selected: ${response.walletName ?? '-'}')),
+    );
   }
 
   Future<void> _load() async {
@@ -40,20 +109,36 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       Map<String, dynamic>? current;
       try {
         final curRes = await _api.getCurrentSubscription();
-        current = curRes.data is Map ? Map<String, dynamic>.from(curRes.data as Map) : null;
+        if (curRes.data is Map) {
+          final map = curRes.data as Map;
+          if (map['data'] is Map) {
+            current = Map<String, dynamic>.from(map['data'] as Map);
+          } else {
+            current = Map<String, dynamic>.from(map);
+          }
+        }
       } catch (_) {}
       final data = plansRes.data;
-      List<dynamic> plans = [];
+      List<Map<String, dynamic>> plans = [];
       if (data is Map && data['data'] != null) {
-        plans = data['data'] is List ? data['data'] as List : [];
+        plans = data['data'] is List
+            ? (data['data'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            : [];
       } else if (data is List) {
-        plans = data;
+        plans = data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       }
       if (mounted) setState(() {
         _plans = plans;
         _current = current;
         _loading = false;
       });
+
+      if (mounted && current != null && current!['plan'] is Map) {
+        final plan = current!['plan'] as Map;
+        if ((plan['is_default'] != true) && !_promptingPrimaryCampaign) {
+          await _promptPrimaryCampaignSelection();
+        }
+      }
     } catch (e) {
       if (mounted) setState(() {
         _error = e.toString();
@@ -66,12 +151,46 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     if (_upgrading) return;
     setState(() => _upgrading = true);
     try {
-      await _api.upgradeSubscription(planId);
+      await _api.recordSubscriptionConsent(planId);
+      final res = await _api.upgradeSubscription(planId);
+      final payload = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+      final needsPayment = payload['requires_payment'] == true;
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Subscription upgrade initiated')),
-        );
-        _load();
+        if (needsPayment) {
+          final order = payload['order'] is Map ? payload['order'] as Map : {};
+          final amountPaise = order['amount'] is int ? order['amount'] as int : int.tryParse('${order['amount']}') ?? 0;
+          final amount = amountPaise > 0 ? amountPaise / 100 : 0.0;
+          if (order['id'] != null && order['key'] != null && amountPaise > 0) {
+            setState(() => _pendingPlanId = planId);
+            _razorpay.open({
+              'key': order['key'],
+              'amount': amountPaise,
+              'currency': order['currency'] ?? 'INR',
+              'name': order['merchant_name'] ?? 'Kutoot',
+              'description': 'Subscription Upgrade',
+              'order_id': order['id'],
+              'theme': {'color': '#FF6B35'},
+            });
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PaymentMethodsScreen(amount: amount > 0 ? amount : 0)),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Payment order created, but checkout key/order is missing.')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(payload['message']?.toString() ?? 'Plan upgraded successfully')),
+          );
+          if (payload['needs_campaign_selection'] == true) {
+            await _promptPrimaryCampaignSelection();
+          }
+          setState(() => _upgrading = false);
+        }
+        await _load();
       }
     } catch (e) {
       if (mounted) {
@@ -80,7 +199,67 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _upgrading = false);
+      if (mounted && _pendingPlanId == null) setState(() => _upgrading = false);
+    }
+  }
+
+  Future<void> _promptPrimaryCampaignSelection() async {
+    if (_promptingPrimaryCampaign) return;
+    _promptingPrimaryCampaign = true;
+    try {
+      final campaignsRes = await _api.getAvailableCampaigns();
+      final data = campaignsRes.data is Map ? campaignsRes.data as Map : {};
+      final campaigns = data['data'] is List
+          ? (data['data'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+          : <Map<String, dynamic>>[];
+      if (!mounted || campaigns.isEmpty) return;
+
+      if (campaigns.any((c) => c['is_primary'] == true)) return;
+
+      int? selectedId =
+          campaigns.first['id'] is int ? campaigns.first['id'] as int : int.tryParse('${campaigns.first['id']}');
+
+      final picked = await showDialog<int>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Select Primary Campaign'),
+          content: StatefulBuilder(
+            builder: (context, setLocal) => DropdownButtonFormField<int>(
+              value: selectedId,
+              items: campaigns
+                  .map((c) => DropdownMenuItem<int>(
+                        value: c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}'),
+                        child: Text(c['name']?.toString() ?? c['code']?.toString() ?? 'Campaign'),
+                      ))
+                  .toList(),
+              onChanged: (v) => setLocal(() => selectedId = v),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Later'),
+            ),
+            ElevatedButton(
+              onPressed: selectedId == null ? null : () => Navigator.pop(context, selectedId),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (picked != null) {
+        await _api.setPrimaryCampaign(picked);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Primary campaign updated')),
+        );
+      }
+    } catch (_) {
+      // Best-effort helper flow; ignore failures.
+    } finally {
+      _promptingPrimaryCampaign = false;
     }
   }
 
@@ -157,12 +336,12 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                         const Text('Available Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         ...(_plans.isEmpty ? _defaultPlans : _plans).map((p) {
-                          final plan = p is Map ? p as Map : {};
+                          final plan = p is Map ? p : <String, dynamic>{};
                           final id = plan['id'];
                           final name = plan['name'] ?? 'Plan';
                           final price = _yearly ? (plan['yearly'] ?? plan['price'] ?? plan['amount']) : (plan['monthly'] ?? plan['price'] ?? plan['amount']);
                           final desc = plan['description'] ?? '';
-                          final recommended = plan['recommended'] == true;
+                          final recommended = plan['recommended'] == true || plan['best_value'] == true;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(

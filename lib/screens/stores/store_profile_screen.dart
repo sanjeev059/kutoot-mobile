@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 import '../brand/brand_loyalty_screen.dart';
+import '../payment/pay_bill_screen.dart';
 
 class StoreProfileScreen extends StatelessWidget {
   final Map<String, dynamic>? store;
@@ -144,9 +145,12 @@ class StoreProfileScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _showComingSoon(context),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => PayBillScreen(merchantLocation: store ?? {})),
+                      ),
                       icon: const Icon(Icons.directions_rounded),
-                      label: const Text('Navigate to Store'),
+                      label: const Text('Pay Bill'),
                     ),
                   ),
                 ],
