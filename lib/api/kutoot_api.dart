@@ -94,6 +94,9 @@ class KutootApi {
 
   Future<Response> getCampaignBounty(int id) => _dio.get('/campaigns/$id/bounty');
 
+  Future<Response> participateInCampaign(int id, {String mode = 'engagement'}) =>
+      _dio.post('/campaigns/$id/participate', data: {'entry_mode': mode});
+
   // ─── Coupons ──────────────────────────────────────────────────────
   Future<Response> getCoupons({Map<String, dynamic>? params}) =>
       _dio.get('/coupons', queryParameters: params);
@@ -162,6 +165,9 @@ class KutootApi {
 
   // ─── Profile ──────────────────────────────────────────────────────
   Future<Response> getProfile() => _dio.get('/profile');
+
+  Future<Response> getProfileCampaignEntries() =>
+      _dio.get('/profile/campaign-entries');
 
   Future<Response> updateProfile(Map<String, dynamic> data) =>
       _dio.patch('/profile', data: data);

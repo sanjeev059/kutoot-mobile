@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../explore/explore_screen.dart';
 import '../wallet/wallet_screen.dart';

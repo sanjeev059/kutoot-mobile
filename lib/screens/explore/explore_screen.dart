@@ -341,8 +341,36 @@ class _ExploreScreenState extends State<ExploreScreen> with AutomaticKeepAliveCl
                   children: [
                     _QuickAction(icon: Icons.qr_code_scanner_rounded, label: 'Scan', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanScreen()))),
                     _QuickAction(icon: Icons.card_giftcard_rounded, label: 'Rewards', onTap: () {}),
-                    _QuickAction(icon: Icons.store_rounded, label: 'Stores', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen()))),
-                    _QuickAction(icon: Icons.campaign_rounded, label: 'Deals', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen()))),
+                    _QuickAction(
+                      icon: Icons.store_rounded,
+                      label: 'Stores',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: 'MUMBAI',
+                            upgradeLabel: 'UPGRADE',
+                            onUpgradeTap: () {},
+                            initialTabIndex: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _QuickAction(
+                      icon: Icons.campaign_rounded,
+                      label: 'Deals',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: 'MUMBAI',
+                            upgradeLabel: 'UPGRADE',
+                            onUpgradeTap: () {},
+                            initialTabIndex: 1,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -373,7 +401,17 @@ class _ExploreScreenState extends State<ExploreScreen> with AutomaticKeepAliveCl
                       children: [
                         Text('Top Deals Near You', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                         TextButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CampaignsScreen(
+                                cityName: 'MUMBAI',
+                                upgradeLabel: 'UPGRADE',
+                                onUpgradeTap: () {},
+                                initialTabIndex: 0,
+                              ),
+                            ),
+                          ),
                           child: const Text('See all'),
                         ),
                       ],
@@ -388,7 +426,21 @@ class _ExploreScreenState extends State<ExploreScreen> with AutomaticKeepAliveCl
                               itemCount: _campaigns.isEmpty ? 3 : _campaigns.length,
                               itemBuilder: (context, i) {
                                 if (_campaigns.isEmpty) {
-                                  return _DealChip(name: 'Deal ${i + 1}', imageUrl: null, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())));
+                                  return _DealChip(
+                                    name: 'Deal ${i + 1}',
+                                    imageUrl: null,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CampaignsScreen(
+                                          cityName: 'MUMBAI',
+                                          upgradeLabel: 'UPGRADE',
+                                          onUpgradeTap: () {},
+                                          initialTabIndex: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  );
                                 }
                                 final c = _campaigns[i] is Map ? _campaigns[i] as Map : {};
                                 final id = c['id'];

@@ -46,6 +46,8 @@ class ImageUtils {
   static String? fromStore(dynamic store) {
     if (store == null) return null;
     if (store is! Map) return null;
+    final direct = store['image'] ?? store['image_url'] ?? store['thumb_url'];
+    if (direct != null) return resolve(direct);
     final media = store['media'];
     if (media is List && media.isNotEmpty && media[0] is Map) {
       final m = media[0] as Map;

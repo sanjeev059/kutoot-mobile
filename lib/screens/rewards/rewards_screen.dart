@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'redeem_rewards_screen.dart';
 import 'my_rewards_screen.dart';
@@ -238,7 +238,7 @@ class _AvailableRewardRow extends StatelessWidget {
               children: [
                 Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: onSurface)),
                 const SizedBox(height: 2),
-                const Text(points, style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                Text(points, style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
