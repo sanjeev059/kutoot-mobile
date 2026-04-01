@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/kutoot_api.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
@@ -16,70 +17,102 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  bool _loading = true;
+  final _phoneController = TextEditingController();
   bool _saving = false;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadLocal();
+    _fetchRemote();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _loadLocal() async {
     try {
-      final res = await _api.getProfile();
-      final data =
-          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
-      if (data != null && mounted) {
-        _nameController.text = data['name']?.toString() ?? '';
-        _emailController.text = data['email']?.toString() ?? '';
-      }
-    } catch (e) {
       final user = context.read<AuthProvider>().user;
       if (user != null) {
         _nameController.text = user['name']?.toString() ?? '';
         _emailController.text = user['email']?.toString() ?? '';
+        _phoneController.text = user['phone']?.toString() ?? '';
       }
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString('profile_name');
+    final savedEmail = prefs.getString('profile_email');
+    if (savedName != null && _nameController.text.isEmpty) {
+      _nameController.text = savedName;
     }
-    if (mounted) setState(() => _loading = false);
+    if (savedEmail != null && _emailController.text.isEmpty) {
+      _emailController.text = savedEmail;
+    }
+  }
+
+  Future<void> _fetchRemote() async {
+    try {
+      final res = await _api.getProfile().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => throw Exception('timeout'),
+          );
+      final raw = res.data;
+      Map<String, dynamic>? data;
+      if (raw is Map) {
+        data = raw['data'] is Map
+            ? Map<String, dynamic>.from(raw['data'] as Map)
+            : Map<String, dynamic>.from(raw);
+      }
+      if (data != null && mounted) {
+        setState(() {
+          if ((data!['name'] ?? '').toString().isNotEmpty) {
+            _nameController.text = data['name'].toString();
+          }
+          if ((data['email'] ?? '').toString().isNotEmpty) {
+            _emailController.text = data['email'].toString();
+          }
+          if ((data['phone'] ?? '').toString().isNotEmpty) {
+            _phoneController.text = data['phone'].toString();
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _saving) return;
     setState(() => _saving = true);
+
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profile_name', name);
+    if (email.isNotEmpty) await prefs.setString('profile_email', email);
+
     try {
       await _api.updateProfile({
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim().isEmpty
-            ? null
-            : _emailController.text.trim(),
-      });
+        'name': name,
+        'email': email.isEmpty ? null : email,
+      }).timeout(const Duration(seconds: 5));
       if (mounted) {
-        context.read<AuthProvider>().checkAuth();
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Profile updated')));
-        Navigator.pop(context);
+        try {
+          context.read<AuthProvider>().checkAuth();
+        } catch (_) {}
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: ${e.toString()}')));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile updated')),
+    );
+    Navigator.pop(context);
   }
 
   @override
@@ -89,47 +122,160 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Edit Profile',
-            style: TextStyle(
-                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+              color: AppTheme.textPrimary, fontWeight: FontWeight.w800),
+        ),
         foregroundColor: AppTheme.textPrimary,
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Save'),
-          ),
-        ],
       ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Stack(
                   children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      validator: (v) =>
-                          (v ?? '').trim().isEmpty ? 'Name is required' : null,
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: AppTheme.surfaceContainerHigh,
+                      child: const Icon(Icons.person,
+                          size: 48, color: AppTheme.primary),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                      keyboardType: TextInputType.emailAddress,
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt,
+                            size: 16, color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 28),
+              const Text('Full Name',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppTheme.textSecondary)),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: 'Enter your name',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                ),
+                validator: (v) =>
+                    (v ?? '').trim().isEmpty ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 20),
+              const Text('Email',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppTheme.textSecondary)),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Enter your email',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Phone Number',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppTheme.textSecondary)),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _phoneController,
+                enabled: false,
+                decoration: InputDecoration(
+                  hintText: 'Phone number',
+                  filled: true,
+                  fillColor: AppTheme.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppTheme.outlineVariant),
+                  ),
+                  suffixIcon: const Icon(Icons.lock_outline,
+                      size: 18, color: AppTheme.textSecondary),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
