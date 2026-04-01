@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+import '../../api/kutoot_api.dart';
 import '../../services/subscription_plan_service.dart';
+import '../../theme/app_theme.dart';
 
 class RewardsDealsScreen extends StatefulWidget {
   final String cityName;
@@ -21,20 +23,107 @@ class RewardsDealsScreen extends StatefulWidget {
 }
 
 class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
+  final _api = KutootApi();
   String _filter = 'All';
   String? _currentPlan;
   String? _appliedCode;
+  List<_RewardDeal> _apiDeals = [];
+  bool _loaded = false;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadPlan();
+    _fetchDeals();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchDeals());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPlan() async {
     final plan = await SubscriptionPlanService.getCurrentPlanName();
     if (!mounted) return;
     setState(() => _currentPlan = plan);
+  }
+
+  Future<void> _fetchDeals() async {
+    try {
+      final res = await _api.getCoupons(params: {'per_page': 50});
+      final raw = res.data;
+      final deals = <_RewardDeal>[];
+
+      void parseCoupons(dynamic list, String segment) {
+        if (list is! List) return;
+        for (final item in list) {
+          final m = item is Map
+              ? Map<String, dynamic>.from(item)
+              : <String, dynamic>{};
+          final code = m['code']?.toString() ?? '';
+          final title = m['title']?.toString() ?? '';
+          if (code.isEmpty && title.isEmpty) continue;
+
+          final requiredPlan = m['required_plan'] is Map
+              ? (m['required_plan'] as Map)['name']?.toString() ?? 'BASIC'
+              : (m['is_eligible'] == true ? '' : 'BASIC');
+
+          final catMap = m['category'] is Map
+              ? Map<String, dynamic>.from(m['category'] as Map)
+              : <String, dynamic>{};
+          final catName = catMap['name']?.toString() ?? segment;
+
+          final merchant = m['merchant_location'] is Map
+              ? Map<String, dynamic>.from(m['merchant_location'] as Map)
+              : <String, dynamic>{};
+          final merchantInfo = merchant['merchant'] is Map
+              ? Map<String, dynamic>.from(merchant['merchant'] as Map)
+              : <String, dynamic>{};
+          final brandName = merchantInfo['name']?.toString() ?? catName;
+
+          final discountType = m['discount_type']?.toString() ?? 'fixed';
+          final discountValue =
+              num.tryParse(m['discount_value']?.toString() ?? '0') ?? 0;
+          final dealTitle = discountType == 'percentage'
+              ? '$discountValue% OFF'
+              : '₹$discountValue OFF';
+
+          deals.add(_RewardDeal(
+            brandName: brandName,
+            categoryLabel: catName.toUpperCase(),
+            title: title.isNotEmpty ? title : dealTitle,
+            subtitle: m['description']?.toString() ?? '',
+            code: code,
+            requiredPlan: requiredPlan.toUpperCase(),
+            type: segment == 'bank'
+                ? _DealType.bank
+                : (segment == 'store' ? _DealType.store : _DealType.merchant),
+            brandIcon:
+                segment == 'bank' ? Icons.account_balance : Icons.storefront,
+            brandColor:
+                segment == 'bank' ? const Color(0xFF004B87) : AppTheme.primary,
+          ));
+        }
+      }
+
+      if (raw is Map && raw['data'] is Map) {
+        final data = Map<String, dynamic>.from(raw['data'] as Map);
+        parseCoupons(data['plan_coupons'], 'plan');
+        parseCoupons(data['store_coupons'], 'store');
+        parseCoupons(data['other_coupons'], 'other');
+      } else if (raw is Map && raw['data'] is List) {
+        parseCoupons(raw['data'], 'plan');
+      }
+
+      if (deals.isNotEmpty && mounted) {
+        setState(() => _apiDeals = deals);
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loaded = true);
   }
 
   int _planRank(String? plan) {
@@ -55,14 +144,18 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   bool _canApply(String requiredPlan) =>
       _planRank(_currentPlan) >= _planRank(requiredPlan);
 
+  List<_RewardDeal> get _allDealsSource =>
+      _apiDeals.isNotEmpty ? _apiDeals : _fallbackDeals;
+
   List<_RewardDeal> get _filtered {
+    final source = _allDealsSource;
     if (_filter == 'Merchant Deals') {
-      return _allDeals.where((d) => d.type == _DealType.merchant).toList();
+      return source.where((d) => d.type == _DealType.merchant).toList();
     }
     if (_filter == 'Bank Offers') {
-      return _allDeals.where((d) => d.type == _DealType.bank).toList();
+      return source.where((d) => d.type == _DealType.bank).toList();
     }
-    return _allDeals;
+    return source;
   }
 
   @override
@@ -260,7 +353,7 @@ class _RewardDeal {
   });
 }
 
-const _allDeals = [
+const _fallbackDeals = [
   _RewardDeal(
     brandName: 'Starbucks Reserve',
     categoryLabel: 'MERCHANT OFFER',

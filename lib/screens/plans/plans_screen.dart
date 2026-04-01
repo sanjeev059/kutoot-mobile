@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/api_data_service.dart';
 import '../../theme/app_theme.dart';
 import '../payment/plan_payment_flow_screen.dart';
 import '../home/kinetic_home_screens.dart';
 import '../profile/profile_hub_screen.dart';
+import '../qr/qr_scan_screen.dart';
 
 class PlansScreen extends StatefulWidget {
   final String cityName;
@@ -14,6 +17,125 @@ class PlansScreen extends StatefulWidget {
 
 class _PlansScreenState extends State<PlansScreen> {
   int _selectedIndex = 0;
+  List<_PlanData> _plans = _fallbackPlans;
+  bool _loading = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlans();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchPlans());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchPlans() async {
+    try {
+      final apiPlans = await ApiDataService.fetchPlans();
+      if (apiPlans.isNotEmpty && mounted) {
+        final parsed = apiPlans.map<_PlanData>((p) {
+          final name = p['name']?.toString() ?? 'Plan';
+          final price = p['price']?.toString() ?? '0';
+          final isDefault = p['is_default'] == true;
+          return _PlanData(
+            id: p['id'] is int
+                ? p['id'] as int
+                : int.tryParse(p['id']?.toString() ?? '0') ?? 0,
+            name: name,
+            tier: isDefault ? 'FREE TIER' : 'MEMBERSHIP',
+            price: price,
+            validity: p['validity']?.toString() ?? 'Forever',
+            maxBills: '${p['max_discounted_bills'] ?? 0} Trans.',
+            maxRedeem: '₹${p['max_redeemable_amount'] ?? 0}',
+            earnRate: '${p['stamps_per_transaction'] ?? 1} / bill',
+            bonus: '${p['stamps_on_purchase'] ?? 0} Stamps',
+            icon: _iconForPlan(name),
+            badges: _badgesForPlan(name),
+            deals: _dealsFromPlan(p),
+            gradient: _gradientForPlan(name),
+          );
+        }).toList();
+        if (parsed.isNotEmpty) {
+          setState(() => _plans = parsed);
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  static IconData _iconForPlan(String name) {
+    switch (name.toLowerCase()) {
+      case 'basic':
+        return Icons.card_membership;
+      case 'pro':
+        return Icons.workspace_premium;
+      case 'vip':
+        return Icons.diamond_outlined;
+      case 'elite':
+        return Icons.emoji_events_outlined;
+      default:
+        return Icons.person_outline;
+    }
+  }
+
+  static List<String> _badgesForPlan(String name) {
+    switch (name.toLowerCase()) {
+      case 'basic':
+        return ['Best Value'];
+      case 'pro':
+        return ['Popular'];
+      case 'vip':
+        return ['Priority'];
+      case 'elite':
+        return ['Premium', 'Exclusive'];
+      default:
+        return [];
+    }
+  }
+
+  static List<Color> _gradientForPlan(String name) {
+    switch (name.toLowerCase()) {
+      case 'basic':
+        return [const Color(0xFF8A002B), const Color(0xFF4A0018)];
+      case 'pro':
+        return [const Color(0xFFA04100), const Color(0xFF612500)];
+      case 'vip':
+        return [const Color(0xFFEA6B1E), const Color(0xFF9A3A00)];
+      case 'elite':
+        return [const Color(0xFF221A14), const Color(0xFF3B322B)];
+      default:
+        return [const Color(0xFF9E9E9E), const Color(0xFF616161)];
+    }
+  }
+
+  static List<String> _dealsFromPlan(Map<String, dynamic> p) {
+    final cats = p['coupon_categories'];
+    if (cats is List && cats.isNotEmpty) {
+      return cats
+          .map<String>(
+              (c) => c is Map ? (c['name']?.toString() ?? '') : c.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    switch ((p['name'] ?? '').toString().toLowerCase()) {
+      case 'basic':
+        return ['Merchant', 'Platform'];
+      case 'pro':
+        return ['Merchant', 'Platform', 'Bank'];
+      case 'vip':
+        return ['Merchant', 'Platform', 'Bank', 'Flash Deals'];
+      case 'elite':
+        return ['Merchant', 'Platform', 'Bank', 'Exclusive', 'Concierge'];
+      default:
+        return ['Basic Merchant'];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,52 +156,64 @@ class _PlansScreenState extends State<PlansScreen> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: PageView.builder(
-                controller: PageController(viewportFraction: 0.86),
-                onPageChanged: (index) =>
-                    setState(() => _selectedIndex = index),
-                itemCount: _plans.length,
-                itemBuilder: (_, i) => Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: _PlanCard(
-                    plan: _plans[i],
-                    selected: _selectedIndex == i,
-                    onSelect: () {
-                      setState(() => _selectedIndex = i);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PlanPaymentScreen(
-                            planName: _plans[i].name,
-                            amount: _plans[i].price,
-                            cityName: widget.cityName,
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _fetchPlans,
+                      child: PageView.builder(
+                        controller: PageController(viewportFraction: 0.86),
+                        onPageChanged: (index) =>
+                            setState(() => _selectedIndex = index),
+                        itemCount: _plans.length,
+                        itemBuilder: (_, i) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: _PlanCard(
+                            plan: _plans[i],
+                            selected: _selectedIndex == i,
+                            onSelect: () {
+                              setState(() => _selectedIndex = i);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PlanPaymentScreen(
+                                    planId: _plans[i].id,
+                                    planName: _plans[i].name,
+                                    amount: _plans[i].price,
+                                    cityName: widget.cityName,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+                      ),
+                    ),
             ),
           ],
         ),
       ),
-      floatingActionButton: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          color: AppTheme.primary,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withOpacity(0.36),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      floatingActionButton: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const QrScanScreen()),
         ),
-        child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        child: Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withOpacity(0.36),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        ),
       ),
       bottomNavigationBar: _PlansBottomNav(cityName: widget.cityName),
     );
@@ -467,6 +601,7 @@ class _PlansBottomNav extends StatelessWidget {
 }
 
 class _PlanData {
+  final int id;
   final String name;
   final String tier;
   final String price;
@@ -481,6 +616,7 @@ class _PlanData {
   final List<Color> gradient;
 
   const _PlanData({
+    this.id = 0,
     required this.name,
     required this.tier,
     required this.price,
@@ -496,7 +632,7 @@ class _PlanData {
   });
 }
 
-const List<_PlanData> _plans = [
+const List<_PlanData> _fallbackPlans = [
   _PlanData(
     name: 'Free',
     tier: 'FREE TIER',

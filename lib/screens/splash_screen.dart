@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/location_bootstrap_service.dart';
 import 'home/kinetic_home_screens.dart';
 
@@ -27,10 +29,20 @@ class _SplashScreenState extends State<SplashScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await Future<void>.delayed(const Duration(milliseconds: 3500));
       if (!mounted) return;
+
       final city = await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
+
+      final auth = context.read<AuthProvider>();
+      await auth.checkAuth();
+      if (!mounted) return;
+
+      final Widget home = auth.isLoggedIn
+          ? LoggedInHomeScreen(cityName: city)
+          : GuestHomeScreen(cityName: city);
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => GuestHomeScreen(cityName: city)),
+        MaterialPageRoute(builder: (_) => home),
       );
     });
   }

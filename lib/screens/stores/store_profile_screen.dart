@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../services/api_data_service.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
@@ -18,17 +20,80 @@ class StoreProfileScreen extends StatefulWidget {
 class _StoreProfileScreenState extends State<StoreProfileScreen> {
   String? _currentPlan;
   String? _appliedCode;
+  List<_StoreCoupon>? _apiCoupons;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadPlan();
+    _fetchCoupons();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchCoupons());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPlan() async {
     final plan = await SubscriptionPlanService.getCurrentPlanName();
     if (!mounted) return;
     setState(() => _currentPlan = plan);
+  }
+
+  Future<void> _fetchCoupons() async {
+    final storeId = widget.store?['id'];
+    if (storeId == null) return;
+    final intId = storeId is int ? storeId : int.tryParse(storeId.toString());
+    if (intId == null) return;
+
+    final result = await ApiDataService.fetchCoupons(merchantLocationId: intId);
+    final allCoupons = <_StoreCoupon>[];
+
+    void parseCoupons(List<Map<String, dynamic>> list) {
+      for (final m in list) {
+        final code = m['code']?.toString() ?? '';
+        final title = m['title']?.toString() ?? '';
+        if (code.isEmpty && title.isEmpty) continue;
+
+        final discountType = m['discount_type']?.toString() ?? 'fixed';
+        final discountValue =
+            num.tryParse(m['discount_value']?.toString() ?? '0') ?? 0;
+        final dealTitle = discountType == 'percentage'
+            ? '$discountValue% OFF'
+            : '₹$discountValue OFF';
+
+        final requiredPlan = m['required_plan'] is Map
+            ? (m['required_plan'] as Map)['name']?.toString() ?? ''
+            : (m['is_eligible'] == true ? '' : 'BASIC');
+
+        final catMap = m['category'] is Map
+            ? Map<String, dynamic>.from(m['category'] as Map)
+            : <String, dynamic>{};
+        final badge = catMap['name']?.toString().toUpperCase() ??
+            m['segment']?.toString().toUpperCase() ??
+            '';
+
+        allCoupons.add(_StoreCoupon(
+          title: title.isNotEmpty ? title : dealTitle,
+          subtitle: m['description']?.toString() ?? '',
+          code: code,
+          badge: badge,
+          requiredPlan: requiredPlan.toUpperCase(),
+        ));
+      }
+    }
+
+    parseCoupons(result['plan_coupons'] as List<Map<String, dynamic>>);
+    parseCoupons(result['store_coupons'] as List<Map<String, dynamic>>);
+    parseCoupons(result['other_coupons'] as List<Map<String, dynamic>>);
+
+    if (allCoupons.isNotEmpty && mounted) {
+      setState(() => _apiCoupons = allCoupons);
+    }
   }
 
   @override
@@ -45,7 +110,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     final r = store?['star_rating'] ?? store?['rating'] ?? 4.8;
     final rating = r is num ? r.toDouble() : 4.8;
     final imageUrl = ImageUtils.fromStore(store);
-    final coupons = _buildStoreCoupons();
+    final coupons = _apiCoupons ?? _buildStoreCoupons();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),

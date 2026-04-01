@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'need_help_screen.dart';
 import 'otp_screen.dart';
@@ -18,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String get _digits => _mobileController.text.replaceAll(RegExp(r'\D'), '');
   bool get _valid => _digits.length == 10;
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -25,11 +28,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _continue() {
-    if (!_valid) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: _digits)),
-    );
+  Future<void> _continue() async {
+    if (!_valid || _sending) return;
+    setState(() => _sending = true);
+
+    final auth = context.read<AuthProvider>();
+    final (success, debugOtp) = await auth.sendOtp(_digits);
+
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    if (success) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpScreen(phoneNumber: _digits, debugOtp: debugOtp),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Failed to send OTP'),
+          backgroundColor: AppTheme.primary,
+        ),
+      );
+    }
   }
 
   @override
@@ -184,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     InkWell(
-                      onTap: _valid ? _continue : null,
+                      onTap: _valid && !_sending ? _continue : null,
                       borderRadius: BorderRadius.circular(999),
                       child: Container(
                         height: 58,
@@ -194,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: _valid
+                            colors: _valid && !_sending
                                 ? const [
                                     AppTheme.primary,
                                     AppTheme.primaryContainer
@@ -202,20 +224,42 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const [Color(0xFFA97A86), Color(0xFFB58A94)],
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Log In',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, color: Colors.white),
-                          ],
+                          children: _sending
+                              ? const [
+                                  SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Sending OTP…',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ]
+                              : const [
+                                  Text(
+                                    'Log In',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward,
+                                      color: Colors.white),
+                                ],
                         ),
                       ),
                     ),

@@ -26,12 +26,35 @@ class ProfileHubScreen extends StatefulWidget {
 class _ProfileHubScreenState extends State<ProfileHubScreen> {
   final _api = KutootApi();
   List<Map<String, dynamic>> _campaignEntries = [];
+  List<Map<String, dynamic>> _transactions = [];
   bool _pushNotifications = true;
 
   @override
   void initState() {
     super.initState();
     _loadCampaignEntries();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    try {
+      final res = await _api.getTransactions();
+      final raw = res.data;
+      List items = [];
+      if (raw is Map && raw['data'] is List) {
+        items = raw['data'] as List;
+      } else if (raw is List) {
+        items = raw;
+      }
+      if (items.isNotEmpty && mounted) {
+        setState(() {
+          _transactions = items
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadCampaignEntries() async {
@@ -243,7 +266,6 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // Transaction History
           const Text(
             'Transaction History',
             style: TextStyle(
@@ -253,18 +275,21 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
-            ),
-            child: const Text(
-              'No transactions yet. Your payment and reward history will appear here.',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ),
+          if (_transactions.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE1BEC0)),
+              ),
+              child: const Text(
+                'No transactions yet. Your payment and reward history will appear here.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            )
+          else
+            ..._transactions.take(5).map((t) => _TransactionTile(txn: t)),
           const SizedBox(height: 14),
           const Text(
             'My Stamp Campaigns',
@@ -599,6 +624,92 @@ class _ActionTile extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class _TransactionTile extends StatelessWidget {
+  final Map<String, dynamic> txn;
+  const _TransactionTile({required this.txn});
+
+  @override
+  Widget build(BuildContext context) {
+    final amount =
+        txn['total_amount']?.toString() ?? txn['amount']?.toString() ?? '0';
+    final status = txn['payment_status']?.toString() ?? 'pending';
+    final type = txn['type']?.toString() ?? '';
+    final date = txn['created_at']?.toString().split('T').first ?? '';
+    final ml = txn['merchant_location'] is Map
+        ? txn['merchant_location'] as Map
+        : null;
+    final storeName = ml?['branch_name']?.toString() ?? '';
+    final isPaid = status == 'paid' || status == 'completed';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: const Color(0xFFE1BEC0).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: (isPaid ? const Color(0xFF2E7D32) : AppTheme.primary)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              type.contains('plan')
+                  ? Icons.card_membership
+                  : Icons.receipt_long,
+              color: isPaid ? const Color(0xFF2E7D32) : AppTheme.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  storeName.isNotEmpty
+                      ? storeName
+                      : (type.contains('plan') ? 'Plan Purchase' : 'Payment'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                Text(date,
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 11)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('₹$amount',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 15)),
+              Text(
+                status.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: isPaid
+                      ? const Color(0xFF2E7D32)
+                      : const Color(0xFFEA6B1E),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'legal_loading_screen.dart';
 import 'need_help_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
+  final String? debugOtp;
 
-  const OtpScreen({super.key, required this.phoneNumber});
+  const OtpScreen({super.key, required this.phoneNumber, this.debugOtp});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -20,12 +23,27 @@ class _OtpScreenState extends State<OtpScreen> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _seconds = 30;
   Timer? _timer;
-  bool _navigating = false;
+  bool _verifying = false;
+  String? _debugOtp;
 
   @override
   void initState() {
     super.initState();
+    _debugOtp = widget.debugOtp;
     _startTimer();
+    if (_debugOtp != null && _debugOtp!.length == 6) {
+      _autoFillOtp(_debugOtp!);
+    }
+  }
+
+  void _autoFillOtp(String otp) {
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      for (var i = 0; i < 6 && i < otp.length; i++) {
+        _controllers[i].text = otp[i];
+      }
+      setState(() {});
+    });
   }
 
   @override
@@ -55,7 +73,7 @@ class _OtpScreenState extends State<OtpScreen> {
     });
   }
 
-  void _resend() {
+  Future<void> _resend() async {
     if (_seconds != 0) return;
     for (final c in _controllers) {
       c.clear();
@@ -63,6 +81,14 @@ class _OtpScreenState extends State<OtpScreen> {
     _focusNodes.first.requestFocus();
     setState(() => _seconds = 30);
     _startTimer();
+
+    final auth = context.read<AuthProvider>();
+    final (success, debugOtp) = await auth.sendOtp(widget.phoneNumber);
+    if (!mounted) return;
+    if (success && debugOtp != null && debugOtp.length == 6) {
+      _debugOtp = debugOtp;
+      _autoFillOtp(debugOtp);
+    }
   }
 
   void _onChange(int index, String value) {
@@ -79,12 +105,28 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() {});
   }
 
-  void _verify() {
-    if (!_isValid || _navigating) return;
-    setState(() => _navigating = true);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LegalLoadingScreen()),
-    );
+  Future<void> _verify() async {
+    if (!_isValid || _verifying) return;
+    setState(() => _verifying = true);
+
+    final auth = context.read<AuthProvider>();
+    final success = await auth.verifyOtp(widget.phoneNumber, _otp);
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LegalLoadingScreen()),
+      );
+    } else {
+      setState(() => _verifying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Invalid or expired OTP'),
+          backgroundColor: AppTheme.primary,
+        ),
+      );
+    }
   }
 
   @override
@@ -178,6 +220,27 @@ class _OtpScreenState extends State<OtpScreen> {
                       ),
                     ],
                   ),
+                  if (_debugOtp != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Dev OTP: $_debugOtp',
+                          style: const TextStyle(
+                            color: AppTheme.secondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 22),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -264,7 +327,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   ),
                   const SizedBox(height: 20),
                   InkWell(
-                    onTap: _isValid ? _verify : null,
+                    onTap: _isValid && !_verifying ? _verify : null,
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
                       width: double.infinity,
@@ -274,7 +337,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: _isValid
+                          colors: _isValid && !_verifying
                               ? const [
                                   AppTheme.primary,
                                   AppTheme.primaryContainer
@@ -282,15 +345,39 @@ class _OtpScreenState extends State<OtpScreen> {
                               : const [Color(0xFFA97A86), Color(0xFFB58A94)],
                         ),
                       ),
-                      child: const Center(
-                        child: Text(
-                          'Verify & Proceed',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                      child: Center(
+                        child: _verifying
+                            ? const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Verifying…',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const Text(
+                                'Verify & Proceed',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                       ),
                     ),
                   ),

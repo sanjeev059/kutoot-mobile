@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/api_data_service.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
@@ -6,11 +8,14 @@ import '../campaigns/campaigns_screen.dart';
 import '../plans/plans_screen.dart';
 import '../profile/profile_hub_screen.dart';
 import '../rewards/rewards_deals_screen.dart';
+import '../qr/qr_scan_screen.dart';
 import '../stores/store_profile_screen.dart';
 
+// ═══════════════════════════════════════════════════════════════════════
+//  GUEST HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════
 class GuestHomeScreen extends StatefulWidget {
   final String cityName;
-
   const GuestHomeScreen({super.key, required this.cityName});
 
   @override
@@ -20,18 +25,62 @@ class GuestHomeScreen extends StatefulWidget {
 class _GuestHomeScreenState extends State<GuestHomeScreen> {
   int _activeCategory = 0;
   String _searchQuery = '';
+  List<Map<String, dynamic>> _stores = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<String> _bannerUrls = [];
+  bool _loading = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    final results = await Future.wait([
+      ApiDataService.fetchStores(),
+      ApiDataService.fetchCategories(),
+      ApiDataService.fetchBannerUrls(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _stores = results[0] as List<Map<String, dynamic>>;
+      _categories = results[1] as List<Map<String, dynamic>>;
+      _bannerUrls = results[2] as List<String>;
+      _loading = false;
+    });
+  }
+
+  Future<void> _onCategoryTap(int idx) async {
+    setState(() => _activeCategory = idx);
+    final catId =
+        idx > 0 && idx < _categories.length ? _categories[idx]['id'] : null;
+    final stores = await ApiDataService.fetchStores(
+        categoryId: catId is int ? catId : null);
+    if (!mounted) return;
+    setState(() => _stores = stores);
+  }
+
+  List<Map<String, dynamic>> get _filteredStores {
+    if (_searchQuery.isEmpty) return _stores;
+    return _stores.where((s) {
+      return (s['name']?.toString() ?? '')
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final stores = _stores.where((s) {
-      if (_activeCategory != 0 && s.category != _categories[_activeCategory])
-        return false;
-      if (_searchQuery.isNotEmpty &&
-          !s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-        return false;
-      return true;
-    }).toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       body: SafeArea(
@@ -49,16 +98,14 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.black.withOpacity(0.06)),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(Icons.account_circle_outlined, size: 16),
                       SizedBox(width: 4),
-                      Text(
-                        'GUEST • LOGIN',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 10),
-                      ),
+                      Text('GUEST • LOGIN',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 10)),
                     ],
                   ),
                 ),
@@ -67,42 +114,48 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
               onRightTap: _goPro,
             ),
             Expanded(
-              child: _HomeBody(
-                cityName: widget.cityName,
-                isGuest: true,
-                activeCategory: _activeCategory,
-                onCategoryTap: (idx) => setState(() => _activeCategory = idx),
-                stores: stores,
-                onSearchChanged: (q) => setState(() => _searchQuery = q),
-                onOpenLive: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CampaignsScreen(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _HomeBody(
                       cityName: widget.cityName,
-                      upgradeLabel: 'GO PRO',
-                      initialTabIndex: 0,
-                      onUpgradeTap: _goPro,
+                      isGuest: true,
+                      activeCategory: _activeCategory,
+                      categories: _categories,
+                      onCategoryTap: _onCategoryTap,
+                      stores: _filteredStores,
+                      bannerUrls: _bannerUrls,
+                      onSearchChanged: (q) => setState(() => _searchQuery = q),
+                      onRefresh: _fetchData,
+                      onOpenLive: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: widget.cityName,
+                            upgradeLabel: 'GO PRO',
+                            initialTabIndex: 0,
+                            onUpgradeTap: _goPro,
+                          ),
+                        ),
+                      ),
+                      onOpenAnnouncements: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: widget.cityName,
+                            upgradeLabel: 'GO PRO',
+                            initialTabIndex: 1,
+                            onUpgradeTap: _goPro,
+                          ),
+                        ),
+                      ),
+                      onSeeAll: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AllStoresScreen(cityName: widget.cityName),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                onOpenAnnouncements: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CampaignsScreen(
-                      cityName: widget.cityName,
-                      upgradeLabel: 'GO PRO',
-                      initialTabIndex: 1,
-                      onUpgradeTap: _goPro,
-                    ),
-                  ),
-                ),
-                onSeeAll: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AllStoresScreen(cityName: widget.cityName),
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -119,12 +172,13 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
 
   void _goPro() {
     Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+        context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  LOGGED-IN HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════
 class LoggedInHomeScreen extends StatefulWidget {
   final String cityName;
   const LoggedInHomeScreen({super.key, required this.cityName});
@@ -137,32 +191,69 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   int _activeCategory = 0;
   String _searchQuery = '';
   String _upgradeLabel = 'UPGRADE';
+  List<Map<String, dynamic>> _stores = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<String> _bannerUrls = [];
+  bool _loading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadPlanLabel();
+    _fetchData();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPlanLabel() async {
     final plan = await SubscriptionPlanService.getCurrentPlanName();
     if (!mounted) return;
+    setState(() => _upgradeLabel = plan ?? 'UPGRADE');
+  }
+
+  Future<void> _fetchData() async {
+    final results = await Future.wait([
+      ApiDataService.fetchStores(),
+      ApiDataService.fetchCategories(),
+      ApiDataService.fetchBannerUrls(),
+    ]);
+    if (!mounted) return;
     setState(() {
-      _upgradeLabel = plan ?? 'UPGRADE';
+      _stores = results[0] as List<Map<String, dynamic>>;
+      _categories = results[1] as List<Map<String, dynamic>>;
+      _bannerUrls = results[2] as List<String>;
+      _loading = false;
     });
+  }
+
+  Future<void> _onCategoryTap(int idx) async {
+    setState(() => _activeCategory = idx);
+    final catId =
+        idx > 0 && idx < _categories.length ? _categories[idx]['id'] : null;
+    final stores = await ApiDataService.fetchStores(
+        categoryId: catId is int ? catId : null);
+    if (!mounted) return;
+    setState(() => _stores = stores);
+  }
+
+  List<Map<String, dynamic>> get _filteredStores {
+    if (_searchQuery.isEmpty) return _stores;
+    return _stores.where((s) {
+      return (s['name']?.toString() ?? '')
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final stores = _stores.where((s) {
-      if (_activeCategory != 0 && s.category != _categories[_activeCategory])
-        return false;
-      if (_searchQuery.isNotEmpty &&
-          !s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-        return false;
-      return true;
-    }).toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       body: SafeArea(
@@ -209,61 +300,66 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PlansScreen(cityName: widget.cityName),
-                  ),
+                      builder: (_) => PlansScreen(cityName: widget.cityName)),
                 );
                 _loadPlanLabel();
               },
             ),
             Expanded(
-              child: _HomeBody(
-                cityName: widget.cityName,
-                isGuest: false,
-                activeCategory: _activeCategory,
-                onCategoryTap: (idx) => setState(() => _activeCategory = idx),
-                stores: stores,
-                onSearchChanged: (q) => setState(() => _searchQuery = q),
-                onOpenLive: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CampaignsScreen(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _HomeBody(
                       cityName: widget.cityName,
-                      upgradeLabel: _upgradeLabel,
-                      initialTabIndex: 0,
-                      onUpgradeTap: () => Navigator.push(
+                      isGuest: false,
+                      activeCategory: _activeCategory,
+                      categories: _categories,
+                      onCategoryTap: _onCategoryTap,
+                      stores: _filteredStores,
+                      bannerUrls: _bannerUrls,
+                      onSearchChanged: (q) => setState(() => _searchQuery = q),
+                      onRefresh: _fetchData,
+                      onOpenLive: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: widget.cityName,
+                            upgradeLabel: _upgradeLabel,
+                            initialTabIndex: 0,
+                            onUpgradeTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    PlansScreen(cityName: widget.cityName),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      onOpenAnnouncements: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CampaignsScreen(
+                            cityName: widget.cityName,
+                            upgradeLabel: _upgradeLabel,
+                            initialTabIndex: 1,
+                            onUpgradeTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    PlansScreen(cityName: widget.cityName),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      onSeeAll: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
-                              PlansScreen(cityName: widget.cityName),
+                              AllStoresScreen(cityName: widget.cityName),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                onOpenAnnouncements: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CampaignsScreen(
-                      cityName: widget.cityName,
-                      upgradeLabel: _upgradeLabel,
-                      initialTabIndex: 1,
-                      onUpgradeTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              PlansScreen(cityName: widget.cityName),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                onSeeAll: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AllStoresScreen(cityName: widget.cityName),
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -279,12 +375,74 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   }
 }
 
-class AllStoresScreen extends StatelessWidget {
+// ═══════════════════════════════════════════════════════════════════════
+//  ALL STORES SCREEN
+// ═══════════════════════════════════════════════════════════════════════
+class AllStoresScreen extends StatefulWidget {
   final String cityName;
   const AllStoresScreen({super.key, required this.cityName});
 
   @override
+  State<AllStoresScreen> createState() => _AllStoresScreenState();
+}
+
+class _AllStoresScreenState extends State<AllStoresScreen> {
+  List<Map<String, dynamic>> _stores = [];
+  List<Map<String, dynamic>> _categories = [];
+  int _activeCategory = 0;
+  String _searchQuery = '';
+  bool _loading = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    final results = await Future.wait([
+      ApiDataService.fetchStores(),
+      ApiDataService.fetchCategories(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _stores = results[0];
+      _categories = results[1];
+      _loading = false;
+    });
+  }
+
+  Future<void> _onCategoryTap(int idx) async {
+    setState(() => _activeCategory = idx);
+    final catId =
+        idx > 0 && idx < _categories.length ? _categories[idx]['id'] : null;
+    final stores = await ApiDataService.fetchStores(
+        categoryId: catId is int ? catId : null);
+    if (!mounted) return;
+    setState(() => _stores = stores);
+  }
+
+  List<Map<String, dynamic>> get _filteredStores {
+    if (_searchQuery.isEmpty) return _stores;
+    return _stores.where((s) {
+      return (s['name']?.toString() ?? '')
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filtered = _filteredStores;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       body: SafeArea(
@@ -315,7 +473,7 @@ class AllStoresScreen extends StatelessWidget {
                           size: 15, color: AppTheme.secondary),
                       const SizedBox(width: 2),
                       Text(
-                        '$cityName ▾',
+                        '${widget.cityName} ▾',
                         style: const TextStyle(
                           color: AppTheme.secondary,
                           fontWeight: FontWeight.w800,
@@ -330,89 +488,103 @@ class AllStoresScreen extends StatelessWidget {
               onRightTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PlansScreen(cityName: cityName),
-                ),
+                    builder: (_) => PlansScreen(cityName: widget.cityName)),
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                children: [
-                  const _SearchBar(hint: 'Search stores, brands, or items...'),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(_categories.length, (i) {
-                        final selected = i == 0;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? AppTheme.secondary
-                                  : const Color(0xFFE5E5E5),
-                              borderRadius: BorderRadius.circular(999),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _fetchData,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        children: [
+                          _SearchBar(
+                            hint: 'Search stores, brands, or items...',
+                            onChanged: (q) => setState(() => _searchQuery = q),
+                          ),
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(_categories.length, (i) {
+                                final selected = _activeCategory == i;
+                                final catName =
+                                    _categories[i]['name']?.toString() ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: GestureDetector(
+                                    onTap: () => _onCategoryTap(i),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 18, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: selected
+                                            ? AppTheme.secondary
+                                            : const Color(0xFFE5E5E5),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        i == 0 ? 'All' : catName,
+                                        style: TextStyle(
+                                          color: selected
+                                              ? Colors.white
+                                              : AppTheme.textPrimary,
+                                          fontWeight: selected
+                                              ? FontWeight.w800
+                                              : FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
                             ),
-                            child: Text(
-                              i == 0 ? 'All' : _categories[i],
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : AppTheme.textPrimary,
-                                fontWeight: selected
-                                    ? FontWeight.w800
-                                    : FontWeight.w700,
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Nearby curated stores',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
                               ),
+                              Text(
+                                '${filtered.length} STORES FOUND',
+                                style: const TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filtered.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.62,
                             ),
+                            itemBuilder: (_, i) =>
+                                _StoreCardLarge(store: filtered[i]),
                           ),
-                        );
-                      }),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: const [
-                      Expanded(
-                        child: Text(
-                          'Nearby curated stores',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
+                        ],
                       ),
-                      Text(
-                        '24 STORES FOUND',
-                        style: TextStyle(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _stores.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.62,
                     ),
-                    itemBuilder: (_, i) => _StoreCardLarge(store: _stores[i]),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -420,7 +592,7 @@ class AllStoresScreen extends StatelessWidget {
       floatingActionButton: _QrFab(),
       bottomNavigationBar: _HomeBottomNav(
         activeIndex: 0,
-        cityName: cityName,
+        cityName: widget.cityName,
         isLoggedIn: true,
         planLabel: 'UPGRADE',
       ),
@@ -428,163 +600,197 @@ class AllStoresScreen extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  HOME BODY (shared between Guest & Logged-in)
+// ═══════════════════════════════════════════════════════════════════════
 class _HomeBody extends StatelessWidget {
   final String cityName;
   final bool isGuest;
   final int activeCategory;
+  final List<Map<String, dynamic>> categories;
   final ValueChanged<int> onCategoryTap;
-  final List<_StoreItem> stores;
+  final List<Map<String, dynamic>> stores;
+  final List<String> bannerUrls;
   final VoidCallback onOpenLive;
   final VoidCallback onOpenAnnouncements;
   final VoidCallback onSeeAll;
   final ValueChanged<String>? onSearchChanged;
+  final Future<void> Function()? onRefresh;
 
   const _HomeBody({
     required this.cityName,
     required this.isGuest,
     required this.activeCategory,
+    required this.categories,
     required this.onCategoryTap,
     required this.stores,
+    required this.bannerUrls,
     required this.onOpenLive,
     required this.onOpenAnnouncements,
     required this.onSeeAll,
     this.onSearchChanged,
+    this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      children: [
-        _SearchBar(
-            hint: 'Search for brands or products...',
-            onChanged: onSearchChanged),
-        const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: SizedBox(
-            height: 170,
-            width: double.infinity,
-            child: Image.network(
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuCPH9hMRCozh3NfthtmLUKM6o287QOpScFM7sZ1vv6CrYy63ww2DV_t4JFmMZL3kEB_Dr7EAmhF8l0bHvPpTNRConFTaAFvxbewYzw8DrCf9ffWdOoulpmTlPy8WaqZeujPiC199Y0uhnmERB14HOa29AbH4dc10mOmo9hZb1O3x0D15yazXmi2SqdtwfyAOFLbo1qKrDIlvtAUu1Ja6CBiCA4cOUDl8Z8bmpehyRtcECfYmHsUzADG8PeATdI0NO9eW2tJ3iFPaVDp',
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'DISCOVER CATEGORIES',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 1.5,
-            color: Color(0xFF9A9A9A),
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 94,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            itemBuilder: (_, i) {
-              final selected = activeCategory == i;
-              return Padding(
-                padding: EdgeInsets.only(
-                    right: i == _categories.length - 1 ? 0 : 12),
-                child: _CategoryBubble(
-                  label: _categories[i],
-                  selected: selected,
-                  onTap: () => onCategoryTap(i),
-                  color: i == 1
-                      ? AppTheme.primary
-                      : i == 2
-                          ? AppTheme.secondary
-                          : i == 3
-                              ? AppTheme.tertiaryContainer
-                              : const Color(0xFFF2DCE3),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _FlowEntryCard(
-                title: 'LIVE',
-                subtitle: 'Campaigns',
-                icon: Icons.bolt_rounded,
-                onTap: onOpenLive,
+    return RefreshIndicator(
+      onRefresh: onRefresh ?? () async {},
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        children: [
+          _SearchBar(
+              hint: 'Search for brands or products...',
+              onChanged: onSearchChanged),
+          const SizedBox(height: 16),
+          if (bannerUrls.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: SizedBox(
+                height: 170,
+                width: double.infinity,
+                child: bannerUrls.length == 1
+                    ? Image.network(bannerUrls[0],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              child: const Center(
+                                  child: Icon(Icons.image, size: 48)),
+                            ))
+                    : PageView.builder(
+                        itemCount: bannerUrls.length,
+                        itemBuilder: (_, i) => Image.network(bannerUrls[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                                  color: AppTheme.primary.withOpacity(0.1),
+                                  child: const Center(
+                                      child: Icon(Icons.image, size: 48)),
+                                )),
+                      ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _FlowEntryCard(
-                title: 'ANNOUNCED',
-                subtitle: 'Campaigns',
-                icon: Icons.campaign_rounded,
-                onTap: onOpenAnnouncements,
-              ),
+          const SizedBox(height: 18),
+          const Text(
+            'DISCOVER CATEGORIES',
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.5,
+              color: Color(0xFF9A9A9A),
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Stores Nearby',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 94,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              itemBuilder: (_, i) {
+                final selected = activeCategory == i;
+                final catName = categories[i]['name']?.toString() ?? 'ALL';
+                return Padding(
+                  padding: EdgeInsets.only(
+                      right: i == categories.length - 1 ? 0 : 12),
+                  child: _CategoryBubble(
+                    label: catName,
+                    selected: selected,
+                    onTap: () => onCategoryTap(i),
+                    color: i == 1
+                        ? AppTheme.primary
+                        : i == 2
+                            ? AppTheme.secondary
+                            : i == 3
+                                ? AppTheme.tertiaryContainer
+                                : const Color(0xFFF2DCE3),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _FlowEntryCard(
+                  title: 'LIVE',
+                  subtitle: 'Campaigns',
+                  icon: Icons.bolt_rounded,
+                  onTap: onOpenLive,
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: onSeeAll,
-              child: const Text(
-                'SEE ALL  ▶',
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                  fontSize: 11,
+              const SizedBox(width: 10),
+              Expanded(
+                child: _FlowEntryCard(
+                  title: 'ANNOUNCED',
+                  subtitle: 'Campaigns',
+                  icon: Icons.campaign_rounded,
+                  onTap: onOpenAnnouncements,
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 220,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: stores.length,
-            itemBuilder: (_, i) => Padding(
-              padding: EdgeInsets.only(right: i == stores.length - 1 ? 0 : 12),
-              child: _StoreCardCompact(store: stores[i]),
-            ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Stores Nearby',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onSeeAll,
+                child: const Text(
+                  'SEE ALL  ▶',
+                  style: TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 220,
+            child: stores.isEmpty
+                ? const Center(
+                    child: Text('No stores found',
+                        style: TextStyle(color: Color(0xFF9A9A9A))))
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: stores.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: EdgeInsets.only(
+                          right: i == stores.length - 1 ? 0 : 12),
+                      child: _StoreCardCompact(store: stores[i]),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  REUSABLE WIDGETS
+// ═══════════════════════════════════════════════════════════════════════
 
 class _HomeTopBar extends StatelessWidget {
   final Widget left;
   final String rightLabel;
   final VoidCallback onRightTap;
 
-  const _HomeTopBar({
-    required this.left,
-    required this.rightLabel,
-    required this.onRightTap,
-  });
+  const _HomeTopBar(
+      {required this.left, required this.rightLabel, required this.onRightTap});
 
   @override
   Widget build(BuildContext context) {
@@ -597,11 +803,8 @@ class _HomeTopBar extends StatelessWidget {
           left,
           Expanded(
             child: Center(
-              child: Image.asset(
-                'assets/images/k_logo.png',
-                height: 48,
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('assets/images/k_logo.png',
+                  height: 48, fit: BoxFit.contain),
             ),
           ),
           Column(
@@ -677,15 +880,11 @@ class _SearchBar extends StatelessWidget {
                 border: InputBorder.none,
                 hintText: hint,
                 hintStyle: const TextStyle(
-                  color: Color(0x661C1C1C),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
+                    color: Color(0x661C1C1C),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500),
               ),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -700,12 +899,11 @@ class _FlowEntryCard extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _FlowEntryCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
+  const _FlowEntryCard(
+      {required this.title,
+      required this.subtitle,
+      required this.icon,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -734,23 +932,17 @@ class _FlowEntryCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppTheme.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(title,
+                    style: const TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
           ],
@@ -766,12 +958,26 @@ class _CategoryBubble extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _CategoryBubble({
-    required this.label,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
+  const _CategoryBubble(
+      {required this.label,
+      required this.selected,
+      required this.color,
+      required this.onTap});
+
+  IconData get _icon {
+    switch (label) {
+      case 'FASHION':
+        return Icons.checkroom;
+      case 'ELECTRONICS':
+        return Icons.devices_other;
+      case 'HOME':
+        return Icons.chair;
+      case 'BEAUTY':
+        return Icons.spa;
+      default:
+        return Icons.grid_view;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -790,33 +996,19 @@ class _CategoryBubble extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4))
               ],
             ),
-            child: Icon(
-              label == 'FASHION'
-                  ? Icons.checkroom
-                  : label == 'ELECTRONICS'
-                      ? Icons.devices_other
-                      : label == 'HOME'
-                          ? Icons.chair
-                          : Icons.grid_view,
-              color: iconColor,
-              size: 28,
-            ),
+            child: Icon(_icon, color: iconColor, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-              color: selected ? AppTheme.primary : AppTheme.textPrimary,
-            ),
-          ),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                  color: selected ? AppTheme.primary : AppTheme.textPrimary)),
         ],
       ),
     );
@@ -824,19 +1016,23 @@ class _CategoryBubble extends StatelessWidget {
 }
 
 class _StoreCardCompact extends StatelessWidget {
-  final _StoreItem store;
+  final Map<String, dynamic> store;
   const _StoreCardCompact({required this.store});
 
   @override
   Widget build(BuildContext context) {
+    final name = store['name']?.toString() ?? 'Store';
+    final image = store['image']?.toString() ?? '';
+    final badge = store['badge']?.toString() ?? '';
+    final rating = store['rating']?.toString() ?? '4.5';
+    final distance = store['distance']?.toString() ?? '';
+
     return SizedBox(
       width: 155,
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => StoreProfileScreen(store: store.toMap()),
-          ),
+          MaterialPageRoute(builder: (_) => StoreProfileScreen(store: store)),
         ),
         borderRadius: BorderRadius.circular(18),
         child: ClipRRect(
@@ -844,7 +1040,13 @@ class _StoreCardCompact extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(store.image, fit: BoxFit.cover),
+              Image.network(image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        child: const Icon(Icons.store,
+                            size: 48, color: AppTheme.primary),
+                      )),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -857,23 +1059,22 @@ class _StoreCardCompact extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    store.badge,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 10),
+              if (badge.isNotEmpty)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(badge,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 10)),
                   ),
                 ),
-              ),
               Positioned(
                 left: 10,
                 right: 10,
@@ -881,7 +1082,7 @@ class _StoreCardCompact extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(store.name,
+                    Text(name,
                         style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -892,7 +1093,7 @@ class _StoreCardCompact extends StatelessWidget {
                         const Icon(Icons.star,
                             size: 13, color: AppTheme.tertiaryContainer),
                         Text(
-                          ' ${store.rating}  • ${store.distance}',
+                          ' $rating${distance.isNotEmpty ? "  • $distance" : ""}',
                           style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 11,
@@ -912,17 +1113,21 @@ class _StoreCardCompact extends StatelessWidget {
 }
 
 class _StoreCardLarge extends StatelessWidget {
-  final _StoreItem store;
+  final Map<String, dynamic> store;
   const _StoreCardLarge({required this.store});
 
   @override
   Widget build(BuildContext context) {
+    final name = store['name']?.toString() ?? 'Store';
+    final image = store['image']?.toString() ?? '';
+    final badge = store['badge']?.toString() ?? '';
+    final rating = store['rating']?.toString() ?? '4.5';
+    final distance = store['distance']?.toString() ?? '';
+
     return InkWell(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => StoreProfileScreen(store: store.toMap()),
-        ),
+        MaterialPageRoute(builder: (_) => StoreProfileScreen(store: store)),
       ),
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -941,26 +1146,31 @@ class _StoreCardLarge extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(store.image, fit: BoxFit.cover),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          store.badge,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 9),
+                    Image.network(image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              child: const Icon(Icons.store,
+                                  size: 48, color: AppTheme.primary),
+                            )),
+                    if (badge.isNotEmpty)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(badge,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 9)),
                         ),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -975,11 +1185,9 @@ class _StoreCardLarge extends StatelessWidget {
                           children: [
                             const Icon(Icons.star,
                                 color: AppTheme.tertiaryContainer, size: 13),
-                            Text(
-                              ' ${store.rating}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 11),
-                            ),
+                            Text(' $rating',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 11)),
                           ],
                         ),
                       ),
@@ -990,24 +1198,21 @@ class _StoreCardLarge extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-              child: Text(
-                store.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-              ),
+              child: Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w800)),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                '📍 ${store.distance} AWAY',
-                style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0x99594042),
-                    fontWeight: FontWeight.w700),
+            if (distance.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text('📍 $distance AWAY',
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0x99594042),
+                        fontWeight: FontWeight.w700)),
               ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
               child: Row(
@@ -1020,21 +1225,18 @@ class _StoreCardLarge extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
+                              color: AppTheme.primary.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4))
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'PAY BILL',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                            letterSpacing: 0.6),
-                      ),
+                      child: const Text('PAY BILL',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              letterSpacing: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1042,9 +1244,8 @@ class _StoreCardLarge extends StatelessWidget {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5E5),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                        color: const Color(0xFFE5E5E5),
+                        borderRadius: BorderRadius.circular(18)),
                     child: const Icon(Icons.near_me, size: 18),
                   ),
                 ],
@@ -1060,21 +1261,26 @@ class _StoreCardLarge extends StatelessWidget {
 class _QrFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        color: AppTheme.primary,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.36),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const QrScanScreen()),
       ),
-      child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 27),
+      child: Container(
+        width: 58,
+        height: 58,
+        decoration: BoxDecoration(
+          color: AppTheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: AppTheme.primary.withOpacity(0.36),
+                blurRadius: 16,
+                offset: const Offset(0, 8))
+          ],
+        ),
+        child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 27),
+      ),
     );
   }
 }
@@ -1084,12 +1290,11 @@ class _HomeBottomNav extends StatelessWidget {
   final String cityName;
   final bool isLoggedIn;
   final String planLabel;
-  const _HomeBottomNav({
-    required this.activeIndex,
-    required this.cityName,
-    required this.isLoggedIn,
-    required this.planLabel,
-  });
+  const _HomeBottomNav(
+      {required this.activeIndex,
+      required this.cityName,
+      required this.isLoggedIn,
+      required this.planLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -1098,194 +1303,90 @@ class _HomeBottomNav extends StatelessWidget {
       Icons.home_rounded,
       Icons.sell_rounded,
       Icons.confirmation_num_rounded,
-      Icons.person_rounded,
+      Icons.person_rounded
     ];
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Container(
-      height: 84,
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      padding: EdgeInsets.only(bottom: bottomPad > 0 ? bottomPad : 8),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
-      child: Row(
-        children: List.generate(items.length, (i) {
-          final active = activeIndex == i;
-          return Expanded(
-            child: InkWell(
-              onTap: () {
-                if (i == 1) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RewardsDealsScreen(
-                        cityName: cityName,
-                        upgradeLabel: planLabel,
-                        onUpgradeTap: () => Navigator.push(
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          children: List.generate(items.length, (i) {
+            final active = activeIndex == i;
+            return Expanded(
+              child: InkWell(
+                onTap: () {
+                  if (i == 1) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RewardsDealsScreen(
+                            cityName: cityName,
+                            upgradeLabel: planLabel,
+                            onUpgradeTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        PlansScreen(cityName: cityName))),
+                          ),
+                        ));
+                  } else if (i == 2) {
+                    if (isLoggedIn) {
+                      Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PlansScreen(cityName: cityName),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                if (i == 2) {
-                  if (isLoggedIn) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PlansScreen(cityName: cityName),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
+                              builder: (_) => PlansScreen(cityName: cityName)));
+                    } else {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()));
+                    }
+                  } else if (i == 3) {
+                    if (isLoggedIn) {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProfileHubScreen(
+                                cityName: cityName, planLabel: planLabel),
+                          ));
+                    } else {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()));
+                    }
                   }
-                  return;
-                }
-                if (i == 3) {
-                  if (isLoggedIn) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfileHubScreen(
-                          cityName: cityName,
-                          planLabel: planLabel,
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  }
-                }
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icons[i],
-                    color: active ? AppTheme.primary : const Color(0xFF9A9A9A),
-                    size: 25,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[i],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-                      color:
-                          active ? AppTheme.primary : const Color(0xFF9A9A9A),
-                    ),
-                  ),
-                ],
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icons[i],
+                        color:
+                            active ? AppTheme.primary : const Color(0xFF9A9A9A),
+                        size: 25),
+                    const SizedBox(height: 2),
+                    Text(items[i],
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                active ? FontWeight.w900 : FontWeight.w700,
+                            color: active
+                                ? AppTheme.primary
+                                : const Color(0xFF9A9A9A))),
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
 }
-
-class _StoreItem {
-  final int id;
-  final String name;
-  final String category;
-  final String image;
-  final String badge;
-  final String rating;
-  final String distance;
-
-  const _StoreItem({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.image,
-    required this.badge,
-    required this.rating,
-    required this.distance,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'category': category,
-      'image': image,
-      'badge': badge,
-      'rating': rating,
-      'distance': distance,
-      'is_demo_store': true,
-      'source': 'home_static',
-    };
-  }
-}
-
-const List<String> _categories = [
-  'ALL',
-  'FASHION',
-  'ELECTRONICS',
-  'HOME',
-  'BEAUTY'
-];
-
-const List<_StoreItem> _stores = [
-  _StoreItem(
-    id: 101,
-    name: 'Westside',
-    category: 'FASHION',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuC-G-9JECKc4p-QWP2LcUZycO_1MrQk6lY9_tzqV_OEFbUimLGUT63ICHGRgaMnVslwyryofi3hAO-R_PRGPWK4Q_GiiQCbDdur4do_MaV-ddX7NbEBhi6FJsAlUBODWGe4sqAqfHqEfxPmRJ5EAJm3O8ZP_HdxZLrI0Pn5ZEQ--6yY-x24M9W9i6JHXwsM6vRmAvBsQx16-l50FCqp6twRNIWJUXcouZMYdxmFGrzM8RyNwWskC48v32ktcLOfzQGVNEbrRJosrZhm',
-    badge: '15% OFF',
-    rating: '4.5',
-    distance: '1.2 km',
-  ),
-  _StoreItem(
-    id: 102,
-    name: 'Croma',
-    category: 'ELECTRONICS',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAUDHP3i51_AfeqtPe-dzEkR4HWCjgcnjEwU44IG3_sD8Ui2-XaLe-rPaAH9ILxU3uZAT1xMGXorP6yVustg6lFMyagLgupRbO37jsYuXgQL6h3efR8uk-JbZV4g02Wo3iHRmVt3CpCT6cw3Bqvz96k_r1QwOx56g2PHd9-QWwGYaT5Is4k-FXLC-MPnm_oDzcxkziZGl-mpJMjScJnoCOojnbN6ttS2Dr2dShDSEkn5-M83mBwDvg62ZKioLvJlGMBXpXN5HgzwQu1',
-    badge: 'EXCLUSIVE',
-    rating: '4.7',
-    distance: '2.1 km',
-  ),
-  _StoreItem(
-    id: 103,
-    name: 'Reliance Digital',
-    category: 'ELECTRONICS',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAfYcqf6LF2jIg9uNMLSLCNPhurMGTqyKtihB8_sjbCaSIPNyvr9WWofdp35dY5nOb3MiQVQlHnZs6Ik7D9Q9jNQ5hBqV1_FOn72NufxfV59Hbz-mhRUAXoXzWA9h9_S10q3Dww2zro_DdIwC06-kSHQ1iaj0XFB5MTMWsSR7v_C4Jhkq0LR_jvEveNv7fOtvC6UR-aydqop_SqGEgUWCeGd5VAYOCoQ3dJdVf3Z3CsDI1xslffQtOfzBeXTgUJH1escO6PWZR8esI',
-    badge: '10% OFF',
-    rating: '4.4',
-    distance: '1.9 km',
-  ),
-  _StoreItem(
-    id: 104,
-    name: 'Nykaa Luxe',
-    category: 'BEAUTY',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDMQ8epcMm-c6LllV8dXvZFaapPJd5hz-EmlGWv8ItN6OLpKPTc-reumCV6Pm3193580lp1cLKh5sGupU470ffI-laRJNFFKmlwvHPjYHUKoczHmhzeoN-aSM3D9MdEEsiYXOuyWwp6nGh724UIg2WzY7s57L1oE2mNwphs-OUJtUHSJiiVCVmS4dSrAPmmYgUe4_I-J8qPMuzg3ABGlTcVf5-5qoKv3wGHxqIl6v5qtU3kZJwJ6dazxfg0Min-Y7DqBfjznNvls_g',
-    badge: 'FLAT ₹500',
-    rating: '4.9',
-    distance: '1.5 km',
-  ),
-  _StoreItem(
-    id: 105,
-    name: 'Home Centre',
-    category: 'HOME',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuC8S9lnC0l-6bxkdx4sx7b96JcGcAH0AEdqPCvAhm8wVZnTywYsMWEDbxn1oTDV61KZbQET06wsKc4_vIXehaIl25sMPEomuuorwsK-Y54fOrueEeCW9OSlY6HlksO416zUNzgU-26CgQU_vs6GNPDOH9HhZDcPQv9jy2JQ_5Z3LyNFdsfRTcTeFJ_hC1YwQhXSEIV0XswHW7aK2jtT6uthtP4LBn4ftAj84mvpswr8IsVka1BztAdvMcXfuHYQQEzL7ouq1ron7sw',
-    badge: 'EXT 10% OFF',
-    rating: '4.2',
-    distance: '2.4 km',
-  ),
-];

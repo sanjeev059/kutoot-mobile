@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
@@ -25,11 +26,76 @@ class CampaignsScreen extends StatefulWidget {
 class _CampaignsScreenState extends State<CampaignsScreen> {
   final _api = KutootApi();
   late int _activeTab;
+  List<_CampaignData> _liveCampaigns = _fallbackLive;
+  List<_CampaignData> _announcedCampaigns = _fallbackAnnounced;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _activeTab = widget.initialTabIndex;
+    _fetchCampaigns();
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _fetchCampaigns());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchCampaigns() async {
+    try {
+      final res = await _api.getCampaigns(params: {'per_page': 50});
+      final raw = res.data;
+      List items = [];
+      if (raw is Map && raw['data'] is List) {
+        items = raw['data'] as List;
+      } else if (raw is List) {
+        items = raw;
+      }
+      if (items.isNotEmpty && mounted) {
+        final live = <_CampaignData>[];
+        final announced = <_CampaignData>[];
+        for (final item in items) {
+          final m = item is Map
+              ? Map<String, dynamic>.from(item)
+              : <String, dynamic>{};
+          final status = m['status']?.toString() ?? 'active';
+          final isActive = m['is_active'] == true;
+          final title = m['reward_name']?.toString() ??
+              m['code']?.toString() ??
+              'Campaign';
+          final issuedStamps =
+              int.tryParse(m['issued_stamps_cache']?.toString() ?? '0') ?? 0;
+          final stampTarget =
+              int.tryParse(m['stamp_target']?.toString() ?? '100') ?? 100;
+          final progress = stampTarget > 0
+              ? ((issuedStamps / stampTarget) * 100).round().clamp(0, 100)
+              : 0;
+          final c = _CampaignData(
+            id: m['id'] is int
+                ? m['id'] as int
+                : int.tryParse(m['id']?.toString() ?? ''),
+            title: title.toUpperCase(),
+            stamps: issuedStamps,
+            progress: progress,
+            live: isActive && status == 'active',
+          );
+          if (c.live) {
+            live.add(c);
+          } else {
+            announced.add(c);
+          }
+        }
+        setState(() {
+          if (live.isNotEmpty) _liveCampaigns = live;
+          if (announced.isNotEmpty) _announcedCampaigns = announced;
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() {});
   }
 
   @override
@@ -47,42 +113,45 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               onRightTap: widget.onUpgradeTap,
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5E5DB),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _TabButton(
-                            label: 'LIVE',
-                            selected: _activeTab == 0,
-                            onTap: () => setState(() => _activeTab = 0),
+              child: RefreshIndicator(
+                onRefresh: _fetchCampaigns,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5E5DB),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _TabButton(
+                              label: 'LIVE',
+                              selected: _activeTab == 0,
+                              onTap: () => setState(() => _activeTab = 0),
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: _TabButton(
-                            label: 'ANNOUNCED',
-                            selected: _activeTab == 1,
-                            onTap: () => setState(() => _activeTab = 1),
+                          Expanded(
+                            child: _TabButton(
+                              label: 'ANNOUNCED',
+                              selected: _activeTab == 1,
+                              onTap: () => setState(() => _activeTab = 1),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  ...campaigns.map(
-                    (c) => _CampaignTicket(
-                      campaign: c,
-                      onEnterTap: () => _onEnterCampaign(c),
+                    const SizedBox(height: 14),
+                    ...campaigns.map(
+                      (c) => _CampaignTicket(
+                        campaign: c,
+                        onEnterTap: () => _onEnterCampaign(c),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -439,7 +508,7 @@ class _CampaignData {
   });
 }
 
-const List<_CampaignData> _liveCampaigns = [
+const List<_CampaignData> _fallbackLive = [
   _CampaignData(
       id: 1, title: 'LUXURY VILLA', stamps: 12, progress: 82, live: true),
   _CampaignData(
@@ -448,7 +517,7 @@ const List<_CampaignData> _liveCampaigns = [
       id: 3, title: '1KG GOLD BAR', stamps: 1, progress: 94, live: true),
 ];
 
-const List<_CampaignData> _announcedCampaigns = [
+const List<_CampaignData> _fallbackAnnounced = [
   _CampaignData(
       id: 4, title: 'MALDIVES TRIP', stamps: 0, progress: 0, live: false),
   _CampaignData(
