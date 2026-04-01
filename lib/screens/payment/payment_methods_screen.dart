@@ -10,7 +10,8 @@ class PaymentMethodsScreen extends StatefulWidget {
   State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
 }
 
-class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with SingleTickerProviderStateMixin {
+class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedCard = 0;
 
@@ -33,7 +34,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Payment', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Payment',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
@@ -51,7 +54,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          _SavedCardsTab(selectedCard: _selectedCard, onSelect: (i) => setState(() => _selectedCard = i)),
+          _SavedCardsTab(
+              selectedCard: _selectedCard,
+              onSelect: (i) => setState(() => _selectedCard = i)),
           const Center(child: Text('Add new card')),
           _UpiTab(),
           const Center(child: Text('Select your bank')),
@@ -67,14 +72,17 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Total Payable', style: TextStyle(fontSize: 16)),
-                Text('₹${widget.amount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('₹${widget.amount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment initiated'))),
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment initiated'))),
                 child: const Text('Proceed to Pay'),
               ),
             ),
@@ -120,7 +128,11 @@ class _CardTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _CardTile({required this.last4, required this.brand, required this.isSelected, required this.onTap});
+  const _CardTile(
+      {required this.last4,
+      required this.brand,
+      required this.isSelected,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -129,14 +141,22 @@ class _CardTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isSelected ? AppTheme.primary : Colors.transparent, width: 2),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+        border: Border.all(
+            color: isSelected ? AppTheme.primary : Colors.transparent,
+            width: 2),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+        ],
       ),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(Icons.credit_card_rounded, color: AppTheme.primary, size: 40),
-        title: Text('$brand **** $last4', style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: isSelected ? const Icon(Icons.check_circle, color: AppTheme.primary) : null,
+        leading:
+            Icon(Icons.credit_card_rounded, color: AppTheme.primary, size: 40),
+        title: Text('$brand **** $last4',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+        trailing: isSelected
+            ? const Icon(Icons.check_circle, color: AppTheme.primary)
+            : null,
       ),
     );
   }
@@ -161,7 +181,8 @@ class _UpiOption extends StatelessWidget {
   final String name;
   final VoidCallback onTap;
 
-  const _UpiOption({required this.icon, required this.name, required this.onTap});
+  const _UpiOption(
+      {required this.icon, required this.name, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -170,14 +191,18 @@ class _UpiOption extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+        ],
       ),
       child: ListTile(
         onTap: onTap,
         leading: Container(
           width: 48,
           height: 48,
-          decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: AppTheme.primary),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),

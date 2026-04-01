@@ -22,7 +22,8 @@ class SignUpScreen extends StatelessWidget {
                   color: AppTheme.primary.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.person_rounded, size: 48, color: AppTheme.primary),
+                child: const Icon(Icons.person_rounded,
+                    size: 48, color: AppTheme.primary),
               ),
               const SizedBox(height: 32),
               const Text(
@@ -74,12 +75,14 @@ class SignUpScreen extends StatelessWidget {
                 children: [
                   TextButton(
                     onPressed: () {},
-                    child: const Text('Terms of Service', style: TextStyle(fontSize: 12)),
+                    child: const Text('Terms of Service',
+                        style: TextStyle(fontSize: 12)),
                   ),
                   Text('•', style: TextStyle(color: AppTheme.textSecondary)),
                   TextButton(
                     onPressed: () {},
-                    child: const Text('Privacy Policy', style: TextStyle(fontSize: 12)),
+                    child: const Text('Privacy Policy',
+                        style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -129,7 +132,8 @@ class _SocialButton extends StatelessWidget {
           foregroundColor: isDark ? Colors.white : Colors.black,
           side: BorderSide(color: isDark ? Colors.black : Colors.grey.shade300),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

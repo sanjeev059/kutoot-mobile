@@ -13,7 +13,8 @@ class SupportTicketHistoryScreen extends StatelessWidget {
         backgroundColor: Colors.white.withOpacity(0.92),
         elevation: 0,
         foregroundColor: AppTheme.textPrimary,
-        title: const Text('Support Tickets', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Support Tickets',
+            style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -23,7 +24,8 @@ class SupportTicketHistoryScreen extends StatelessWidget {
             status: 'Under Review',
             statusColor: const Color(0xFFEA6B1E),
             date: '24 Oct 2026, 02:30 PM',
-            message: 'Reward points were not credited after payment. Receipt attached.',
+            message:
+                'Reward points were not credited after payment. Receipt attached.',
           ),
           _TicketCard(
             id: '#TKT-09844',
@@ -49,7 +51,9 @@ class SupportTicketHistoryScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Text('Need new help?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+                const Text('Need new help?',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
                 const SizedBox(height: 8),
                 const Text(
                   'Our team is online 24/7 for your support requests.',
@@ -62,7 +66,8 @@ class SupportTicketHistoryScreen extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SubmitTicketScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const SubmitTicketScreen()),
                     ),
                     child: const Text('Create New Ticket'),
                   ),
@@ -111,13 +116,15 @@ class _TicketCardState extends State<_TicketCard> {
         children: [
           ListTile(
             onTap: () => setState(() => _expanded = !_expanded),
-            title: Text(widget.id, style: const TextStyle(fontWeight: FontWeight.w800)),
+            title: Text(widget.id,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text(widget.date, style: const TextStyle(fontSize: 12)),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: widget.statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(99),
@@ -131,14 +138,16 @@ class _TicketCardState extends State<_TicketCard> {
                     ),
                   ),
                 ),
-                Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18),
+                Icon(_expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18),
               ],
             ),
           ),
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Text(widget.message, style: const TextStyle(color: AppTheme.textSecondary)),
+              child: Text(widget.message,
+                  style: const TextStyle(color: AppTheme.textSecondary)),
             ),
         ],
       ),

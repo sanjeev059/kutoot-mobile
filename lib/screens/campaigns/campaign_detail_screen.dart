@@ -31,7 +31,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     _load();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _countdown.inSeconds > 0) {
-        setState(() => _countdown = Duration(seconds: _countdown.inSeconds - 1));
+        setState(
+            () => _countdown = Duration(seconds: _countdown.inSeconds - 1));
       }
     });
   }
@@ -60,20 +61,24 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       Map<String, dynamic>? bounty;
       try {
         final bountyRes = await _api.getCampaignBounty(widget.campaignId);
-        bounty = bountyRes.data is Map ? Map<String, dynamic>.from(bountyRes.data as Map) : null;
+        bounty = bountyRes.data is Map
+            ? Map<String, dynamic>.from(bountyRes.data as Map)
+            : null;
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _campaign = data is Map ? Map<String, dynamic>.from(data as Map) : data;
+          _campaign =
+              data is Map ? Map<String, dynamic>.from(data as Map) : data;
           _bounty = bounty;
           _loading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -106,11 +111,14 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Campaign', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Campaign',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -118,7 +126,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -140,25 +149,44 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                   width: double.infinity,
                                   height: 200,
                                   fit: BoxFit.cover,
-                                  placeholder: (_, __) => Container(height: 200, color: AppTheme.primary.withOpacity(0.1), child: const Center(child: Icon(Icons.card_giftcard_rounded, size: 64, color: AppTheme.primary))),
-                                  errorWidget: (_, __, ___) => Container(height: 200, color: AppTheme.primary.withOpacity(0.1), child: const Center(child: Icon(Icons.card_giftcard_rounded, size: 64, color: AppTheme.primary))),
+                                  placeholder: (_, __) => Container(
+                                      height: 200,
+                                      color: AppTheme.primary.withOpacity(0.1),
+                                      child: const Center(
+                                          child: Icon(
+                                              Icons.card_giftcard_rounded,
+                                              size: 64,
+                                              color: AppTheme.primary))),
+                                  errorWidget: (_, __, ___) => Container(
+                                      height: 200,
+                                      color: AppTheme.primary.withOpacity(0.1),
+                                      child: const Center(
+                                          child: Icon(
+                                              Icons.card_giftcard_rounded,
+                                              size: 64,
+                                              color: AppTheme.primary))),
                                 ),
                               ),
                               const SizedBox(height: 20),
                             ],
                             Text(
-                              _campaign!['reward_name'] ?? _campaign!['name'] ?? 'Campaign',
+                              _campaign!['reward_name'] ??
+                                  _campaign!['name'] ??
+                                  'Campaign',
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
                               ),
                             ),
-                            if ((_campaign!['description'] ?? '').toString().isNotEmpty) ...[
+                            if ((_campaign!['description'] ?? '')
+                                .toString()
+                                .isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(
                                 _campaign!['description'].toString(),
-                                style: const TextStyle(color: AppTheme.textSecondary, height: 1.4),
+                                style: const TextStyle(
+                                    color: AppTheme.textSecondary, height: 1.4),
                               ),
                             ],
                             const SizedBox(height: 16),
@@ -171,9 +199,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.timer_rounded, color: AppTheme.primary),
+                                  const Icon(Icons.timer_rounded,
+                                      color: AppTheme.primary),
                                   const SizedBox(width: 8),
-                                  Text(_countdownStr, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                  Text(_countdownStr,
+                                      style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),
@@ -187,12 +219,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.star_rounded, color: AppTheme.primary, size: 32),
+                                    Icon(Icons.star_rounded,
+                                        color: AppTheme.primary, size: 32),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         'Bounty: ${_bounty!['description'] ?? _bounty!['amount'] ?? 'Available'}',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16),
                                       ),
                                     ),
                                   ],
@@ -200,16 +235,29 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               ),
                             ],
                             const SizedBox(height: 24),
-                            _ExpandableSection(title: 'How to Play', content: '1. Visit a participating store\n2. Make a purchase and show your QR code\n3. Earn stamps for each visit\n4. Complete the card to win rewards!'),
+                            _ExpandableSection(
+                                title: 'How to Play',
+                                content:
+                                    '1. Visit a participating store\n2. Make a purchase and show your QR code\n3. Earn stamps for each visit\n4. Complete the card to win rewards!'),
                             const SizedBox(height: 12),
-                            _ExpandableSection(title: 'Rules', content: '• One stamp per visit\n• Stamps cannot be transferred\n• Offer valid at participating locations only\n• Terms and conditions apply'),
+                            _ExpandableSection(
+                                title: 'Rules',
+                                content:
+                                    '• One stamp per visit\n• Stamps cannot be transferred\n• Offer valid at participating locations only\n• Terms and conditions apply'),
                             const SizedBox(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Nearby Stores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                const Text('Nearby Stores',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold)),
                                 TextButton(
-                                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoresScreen())),
+                                  onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const StoresScreen())),
                                   child: const Text('See all'),
                                 ),
                               ],
@@ -220,9 +268,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               child: ListView(
                                 scrollDirection: Axis.horizontal,
                                 children: [
-                                  _NearbyStoreChip(name: 'The Coffee Artisan', onTap: () {}),
-                                  _NearbyStoreChip(name: 'Burger King', onTap: () {}),
-                                  _NearbyStoreChip(name: 'Starbucks', onTap: () {}),
+                                  _NearbyStoreChip(
+                                      name: 'The Coffee Artisan', onTap: () {}),
+                                  _NearbyStoreChip(
+                                      name: 'Burger King', onTap: () {}),
+                                  _NearbyStoreChip(
+                                      name: 'Starbucks', onTap: () {}),
                                 ],
                               ),
                             ),
@@ -235,7 +286,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                     ? const SizedBox(
                                         height: 20,
                                         width: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white),
                                       )
                                     : const Text('Reserve Stamp'),
                               ),
@@ -267,19 +320,24 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)
+        ],
       ),
       child: Column(
         children: [
           ListTile(
-            title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(widget.title,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             trailing: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
             onTap: () => setState(() => _expanded = !_expanded),
           ),
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(widget.content, style: const TextStyle(color: AppTheme.textSecondary, height: 1.5)),
+              child: Text(widget.content,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, height: 1.5)),
             ),
         ],
       ),
@@ -301,7 +359,9 @@ class _NearbyStoreChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -316,7 +376,11 @@ class _NearbyStoreChip extends StatelessWidget {
               children: [
                 Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
                 const SizedBox(height: 8),
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

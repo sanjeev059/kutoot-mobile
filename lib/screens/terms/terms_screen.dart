@@ -40,10 +40,11 @@ class _TermsScreenState extends State<TermsScreen> {
         setState(() => _loading = false);
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -52,13 +53,16 @@ class _TermsScreenState extends State<TermsScreen> {
     if (version == null || _accepting) return;
     setState(() => _accepting = true);
     try {
-      await _api.acceptTerms(version is int ? version : int.tryParse(version.toString()) ?? 0);
+      await _api.acceptTerms(
+          version is int ? version : int.tryParse(version.toString()) ?? 0);
       if (mounted) {
         widget.onAccepted?.call();
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: ${e.toString()}')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed: ${e.toString()}')));
     } finally {
       if (mounted) setState(() => _accepting = false);
     }
@@ -71,11 +75,14 @@ class _TermsScreenState extends State<TermsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Terms of Service', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Terms of Service',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -83,7 +90,8 @@ class _TermsScreenState extends State<TermsScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -93,8 +101,12 @@ class _TermsScreenState extends State<TermsScreen> {
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(20),
                         child: Text(
-                          _terms?['content'] ?? _terms?['text'] ?? _terms?['body'] ?? 'No terms available.',
-                          style: const TextStyle(height: 1.5, color: AppTheme.textPrimary),
+                          _terms?['content'] ??
+                              _terms?['text'] ??
+                              _terms?['body'] ??
+                              'No terms available.',
+                          style: const TextStyle(
+                              height: 1.5, color: AppTheme.textPrimary),
                         ),
                       ),
                     ),
@@ -104,7 +116,13 @@ class _TermsScreenState extends State<TermsScreen> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: _accepting ? null : _accept,
-                          child: _accepting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('I Accept'),
+                          child: _accepting
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Text('I Accept'),
                         ),
                       ),
                     ),

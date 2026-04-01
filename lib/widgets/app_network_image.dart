@@ -28,11 +28,13 @@ class AppNetworkImage extends StatelessWidget {
     final color = fallbackColor ?? AppTheme.primary;
     final placeholder = Container(
       color: color.withOpacity(0.1),
-      child: Icon(fallbackIcon, color: color, size: (width ?? height ?? 48) * 0.5),
+      child:
+          Icon(fallbackIcon, color: color, size: (width ?? height ?? 48) * 0.5),
     );
     final errorWidget = Container(
       color: color.withOpacity(0.15),
-      child: Icon(fallbackIcon, color: color, size: (width ?? height ?? 48) * 0.5),
+      child:
+          Icon(fallbackIcon, color: color, size: (width ?? height ?? 48) * 0.5),
     );
 
     if (imageUrl == null || imageUrl!.trim().isEmpty) {

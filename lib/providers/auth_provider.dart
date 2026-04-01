@@ -23,7 +23,8 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.getUser();
-      _user = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      _user =
+          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
     } catch (e) {
       _user = null;
     } finally {
@@ -41,13 +42,16 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.sendOtp(identifier);
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data =
+          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
       var debugOtp = data?['debug_otp']?.toString();
       // Fallback: fetch from dev endpoint if not in response (e.g. some env/config edge case)
       if (debugOtp == null || debugOtp.isEmpty) {
         try {
           final devRes = await _api.getDevOtp(identifier);
-          final devData = devRes.data is Map ? Map<String, dynamic>.from(devRes.data as Map) : null;
+          final devData = devRes.data is Map
+              ? Map<String, dynamic>.from(devRes.data as Map)
+              : null;
           debugOtp = devData?['otp']?.toString();
         } catch (_) {}
       }
@@ -69,10 +73,13 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.verifyOtp(identifier, otp);
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data =
+          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
       if (data != null && data['token'] != null) {
         await _api.setToken(data['token'] as String);
-        _user = data['user'] is Map ? Map<String, dynamic>.from(data['user'] as Map) : null;
+        _user = data['user'] is Map
+            ? Map<String, dynamic>.from(data['user'] as Map)
+            : null;
         _isLoading = false;
         notifyListeners();
         return true;
@@ -110,16 +117,20 @@ class AuthProvider with ChangeNotifier {
         final errs = data['errors'];
         if (errs is Map && errs['identifier'] != null) {
           final list = errs['identifier'];
-          return list is List && list.isNotEmpty ? list.first.toString() : 'Invalid phone or email';
+          return list is List && list.isNotEmpty
+              ? list.first.toString()
+              : 'Invalid phone or email';
         }
       }
       if (status == 422) return 'Invalid phone or email';
-      if (status != null && status >= 500) return 'Server error. Please try again later.';
+      if (status != null && status >= 500)
+        return 'Server error. Please try again later.';
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout) {
         return 'Cannot reach server. Check your connection or try again.';
       }
-      if (e.type == DioExceptionType.unknown && e.error?.toString().contains('CORS') == true) {
+      if (e.type == DioExceptionType.unknown &&
+          e.error?.toString().contains('CORS') == true) {
         return 'Connection blocked. If using web, try running on a device/emulator.';
       }
     }

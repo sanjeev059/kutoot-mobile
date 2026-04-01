@@ -14,7 +14,9 @@ class ContactSupportScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white.withOpacity(0.92),
         elevation: 0,
-        title: const Text('Kutoot Support', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800)),
+        title: const Text('Kutoot Support',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.w800)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: SingleChildScrollView(
@@ -49,7 +51,8 @@ class ContactSupportScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Quick Actions', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            const Text('Quick Actions',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -59,7 +62,8 @@ class ContactSupportScreen extends StatelessWidget {
                     label: 'Ticket History',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SupportTicketHistoryScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const SupportTicketHistoryScreen()),
                     ),
                   ),
                 ),
@@ -70,22 +74,28 @@ class ContactSupportScreen extends StatelessWidget {
                     label: 'Read FAQs',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SupportFaqScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const SupportFaqScreen()),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            const Text('Create Support Request', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            const Text('Create Support Request',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubmitTicketScreen())),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SubmitTicketScreen())),
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Submit Request'),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
+                style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52)),
               ),
             ),
           ],
@@ -100,7 +110,8 @@ class _CategoryChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _CategoryChip({required this.icon, required this.label, required this.onTap});
+  const _CategoryChip(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +124,9 @@ class _CategoryChip extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE1BEC0)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -121,7 +134,8 @@ class _CategoryChip extends StatelessWidget {
             Icon(icon, color: AppTheme.primary, size: 24),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ),

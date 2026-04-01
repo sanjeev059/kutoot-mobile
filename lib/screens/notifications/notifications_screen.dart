@@ -8,7 +8,8 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> with SingleTickerProviderStateMixin {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -30,7 +31,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Notifications', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Notifications',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
@@ -96,7 +99,11 @@ class _NotificationItem {
   final String body;
   final String time;
 
-  _NotificationItem({required this.icon, required this.title, required this.body, required this.time});
+  _NotificationItem(
+      {required this.icon,
+      required this.title,
+      required this.body,
+      required this.time});
 }
 
 class _NotificationList extends StatelessWidget {
@@ -119,7 +126,9 @@ class _NotificationList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+            ],
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(16),
@@ -132,14 +141,20 @@ class _NotificationList extends StatelessWidget {
               ),
               child: Icon(item.icon, color: AppTheme.primary),
             ),
-            title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(item.title,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 4),
-                Text(item.body, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Text(item.body,
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 13)),
                 const SizedBox(height: 4),
-                Text(item.time, style: TextStyle(color: AppTheme.textSecondary.withOpacity(0.8), fontSize: 12)),
+                Text(item.time,
+                    style: TextStyle(
+                        color: AppTheme.textSecondary.withOpacity(0.8),
+                        fontSize: 12)),
               ],
             ),
           ),

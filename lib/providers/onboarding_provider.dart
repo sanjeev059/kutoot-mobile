@@ -16,7 +16,8 @@ class OnboardingProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _hasSeen = prefs.getBool(_keySeen) ?? false;
-    } catch (_) {} finally {
+    } catch (_) {
+    } finally {
       _loading = false;
       notifyListeners();
     }

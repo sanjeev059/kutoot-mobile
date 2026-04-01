@@ -17,7 +17,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   bool _lossBalance = false;
   bool _understand = false;
 
-  bool get _canDelete => _lossRewards && _lossHistory && _lossBalance && _understand;
+  bool get _canDelete =>
+      _lossRewards && _lossHistory && _lossBalance && _understand;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +27,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Delete Account', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Delete Account',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: SingleChildScrollView(
@@ -40,7 +43,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 color: Colors.red.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.warning_rounded, color: Colors.red, size: 48),
+              child: const Icon(Icons.warning_rounded,
+                  color: Colors.red, size: 48),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -53,27 +57,48 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               'You will lose the following:',
               style: TextStyle(color: AppTheme.textSecondary),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _CheckTile(
               value: _lossRewards,
               onChanged: (v) => setState(() => _lossRewards = v),
               text: 'Loyalty Rewards',
+              dense: true,
             ),
             _CheckTile(
               value: _lossHistory,
               onChanged: (v) => setState(() => _lossHistory = v),
               text: 'Transaction History',
+              dense: true,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Text(
+                'Your transaction history will no longer be available after deletion.',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
             ),
             _CheckTile(
               value: _lossBalance,
               onChanged: (v) => setState(() => _lossBalance = v),
               text: 'e-Gift Balance',
+              dense: true,
             ),
-            const SizedBox(height: 24),
-            _CheckTile(
-              value: _understand,
-              onChanged: (v) => setState(() => _understand = v),
-              text: 'I understand that this action cannot be undone.',
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFCC80)),
+              ),
+              child: _CheckTile(
+                value: _understand,
+                onChanged: (v) => setState(() => _understand = v),
+                text: 'I understand that this action cannot be undone.',
+                dense: true,
+              ),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -81,11 +106,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               child: ElevatedButton(
                 onPressed: _canDelete
                     ? () async {
-                        await context.read<AuthProvider>().logout();
+                        try {
+                          await context.read<AuthProvider>().logout();
+                        } catch (_) {}
                         if (context.mounted) {
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (_) => const AccountDeletedScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const AccountDeletedScreen()),
                             (r) => false,
                           );
                         }
@@ -109,8 +137,14 @@ class _CheckTile extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final String text;
+  final bool dense;
 
-  const _CheckTile({required this.value, required this.onChanged, required this.text});
+  const _CheckTile({
+    required this.value,
+    required this.onChanged,
+    required this.text,
+    this.dense = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +154,8 @@ class _CheckTile extends StatelessWidget {
       title: Text(text),
       controlAffinity: ListTileControlAffinity.leading,
       activeColor: AppTheme.primary,
+      dense: dense,
+      visualDensity: dense ? VisualDensity.compact : null,
     );
   }
 }

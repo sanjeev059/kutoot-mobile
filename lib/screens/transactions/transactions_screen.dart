@@ -48,11 +48,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Transactions', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Transactions',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -60,7 +63,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -72,7 +76,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         padding: const EdgeInsets.all(16),
                         itemCount: _transactions.length,
                         itemBuilder: (context, i) {
-                          final t = _transactions[i] is Map ? _transactions[i] as Map : {};
+                          final t = _transactions[i] is Map
+                              ? _transactions[i] as Map
+                              : {};
                           final type = t['type'] ?? t['transaction_type'] ?? '';
                           final amount = t['amount'] ?? t['value'] ?? '';
                           final desc = t['description'] ?? t['reason'] ?? '';
@@ -82,11 +88,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 12)
+                              ],
                             ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
                               leading: Container(
                                 width: 48,
                                 height: 48,
@@ -94,15 +106,29 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   color: AppTheme.primary.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primary, size: 24),
+                                child: const Icon(Icons.receipt_long_rounded,
+                                    color: AppTheme.primary, size: 24),
                               ),
-                              title: Text(desc.toString().isNotEmpty ? desc.toString() : type.toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: date.toString().isNotEmpty ? Text(date.toString()) : null,
-                              trailing: amount.toString().isNotEmpty ? Text('₹$amount', style: const TextStyle(fontWeight: FontWeight.w600)) : null,
+                              title: Text(
+                                  desc.toString().isNotEmpty
+                                      ? desc.toString()
+                                      : type.toString(),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: date.toString().isNotEmpty
+                                  ? Text(date.toString())
+                                  : null,
+                              trailing: amount.toString().isNotEmpty
+                                  ? Text('₹$amount',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600))
+                                  : null,
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => TransactionReceiptScreen(transaction: Map<String, dynamic>.from(t)),
+                                  builder: (_) => TransactionReceiptScreen(
+                                      transaction:
+                                          Map<String, dynamic>.from(t)),
                                 ),
                               ),
                             ),
@@ -113,4 +139,3 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 }
-

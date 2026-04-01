@@ -19,12 +19,17 @@ class GuestHomeScreen extends StatefulWidget {
 
 class _GuestHomeScreenState extends State<GuestHomeScreen> {
   int _activeCategory = 0;
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
     final stores = _stores.where((s) {
-      if (_activeCategory == 0) return true;
-      return s.category == _categories[_activeCategory];
+      if (_activeCategory != 0 && s.category != _categories[_activeCategory])
+        return false;
+      if (_searchQuery.isNotEmpty &&
+          !s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        return false;
+      return true;
     }).toList();
 
     return Scaffold(
@@ -68,6 +73,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                 activeCategory: _activeCategory,
                 onCategoryTap: (idx) => setState(() => _activeCategory = idx),
                 stores: stores,
+                onSearchChanged: (q) => setState(() => _searchQuery = q),
                 onOpenLive: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -129,6 +135,7 @@ class LoggedInHomeScreen extends StatefulWidget {
 
 class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   int _activeCategory = 0;
+  String _searchQuery = '';
   String _upgradeLabel = 'UPGRADE';
 
   @override
@@ -148,8 +155,12 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final stores = _stores.where((s) {
-      if (_activeCategory == 0) return true;
-      return s.category == _categories[_activeCategory];
+      if (_activeCategory != 0 && s.category != _categories[_activeCategory])
+        return false;
+      if (_searchQuery.isNotEmpty &&
+          !s.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        return false;
+      return true;
     }).toList();
 
     return Scaffold(
@@ -158,30 +169,39 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
         child: Column(
           children: [
             _HomeTopBar(
-              left: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.secondary.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: AppTheme.secondary.withOpacity(0.20)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.location_on,
-                        size: 15, color: AppTheme.secondary),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${widget.cityName} ▾',
-                      style: const TextStyle(
-                        color: AppTheme.secondary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
+              left: InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Location settings coming soon')),
+                  );
+                },
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border:
+                        Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 15, color: AppTheme.secondary),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${widget.cityName} ▾',
+                        style: const TextStyle(
+                          color: AppTheme.secondary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               rightLabel: _upgradeLabel,
@@ -202,6 +222,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                 activeCategory: _activeCategory,
                 onCategoryTap: (idx) => setState(() => _activeCategory = idx),
                 stores: stores,
+                onSearchChanged: (q) => setState(() => _searchQuery = q),
                 onOpenLive: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -270,30 +291,39 @@ class AllStoresScreen extends StatelessWidget {
         child: Column(
           children: [
             _HomeTopBar(
-              left: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.secondary.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: AppTheme.secondary.withOpacity(0.20)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.location_on,
-                        size: 15, color: AppTheme.secondary),
-                    const SizedBox(width: 2),
-                    Text(
-                      '$cityName ▾',
-                      style: const TextStyle(
-                        color: AppTheme.secondary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
+              left: InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Location settings coming soon')),
+                  );
+                },
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border:
+                        Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 15, color: AppTheme.secondary),
+                      const SizedBox(width: 2),
+                      Text(
+                        '$cityName ▾',
+                        style: const TextStyle(
+                          color: AppTheme.secondary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               rightLabel: 'UPGRADE',
@@ -407,6 +437,7 @@ class _HomeBody extends StatelessWidget {
   final VoidCallback onOpenLive;
   final VoidCallback onOpenAnnouncements;
   final VoidCallback onSeeAll;
+  final ValueChanged<String>? onSearchChanged;
 
   const _HomeBody({
     required this.cityName,
@@ -417,6 +448,7 @@ class _HomeBody extends StatelessWidget {
     required this.onOpenLive,
     required this.onOpenAnnouncements,
     required this.onSeeAll,
+    this.onSearchChanged,
   });
 
   @override
@@ -424,42 +456,18 @@ class _HomeBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       children: [
-        const _SearchBar(hint: 'Search for brands or products...'),
+        _SearchBar(
+            hint: 'Search for brands or products...',
+            onChanged: onSearchChanged),
         const SizedBox(height: 16),
         ClipRRect(
           borderRadius: BorderRadius.circular(22),
           child: SizedBox(
             height: 170,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCPH9hMRCozh3NfthtmLUKM6o287QOpScFM7sZ1vv6CrYy63ww2DV_t4JFmMZL3kEB_Dr7EAmhF8l0bHvPpTNRConFTaAFvxbewYzw8DrCf9ffWdOoulpmTlPy8WaqZeujPiC199Y0uhnmERB14HOa29AbH4dc10mOmo9hZb1O3x0D15yazXmi2SqdtwfyAOFLbo1qKrDIlvtAUu1Ja6CBiCA4cOUDl8Z8bmpehyRtcECfYmHsUzADG8PeATdI0NO9eW2tJ3iFPaVDp',
-                  fit: BoxFit.cover,
-                ),
-                Container(
-                  alignment: Alignment.bottomLeft,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        AppTheme.primary.withOpacity(0.85),
-                        Colors.transparent
-                      ],
-                    ),
-                  ),
-                  child: const Text(
-                    'Upto 70% Off',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-              ],
+            width: double.infinity,
+            child: Image.network(
+              'https://lh3.googleusercontent.com/aida-public/AB6AXuCPH9hMRCozh3NfthtmLUKM6o287QOpScFM7sZ1vv6CrYy63ww2DV_t4JFmMZL3kEB_Dr7EAmhF8l0bHvPpTNRConFTaAFvxbewYzw8DrCf9ffWdOoulpmTlPy8WaqZeujPiC199Y0uhnmERB14HOa29AbH4dc10mOmo9hZb1O3x0D15yazXmi2SqdtwfyAOFLbo1qKrDIlvtAUu1Ja6CBiCA4cOUDl8Z8bmpehyRtcECfYmHsUzADG8PeATdI0NO9eW2tJ3iFPaVDp',
+              fit: BoxFit.cover,
             ),
           ),
         ),
@@ -596,32 +604,46 @@ class _HomeTopBar extends StatelessWidget {
               ),
             ),
           ),
-          InkWell(
-            onTap: onRightTap,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (rightLabel == 'GO PRO')
+                const Text('FREE MEMBER',
+                    style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textSecondary,
+                        letterSpacing: 0.8)),
+              if (rightLabel == 'GO PRO') const SizedBox(height: 2),
+              InkWell(
+                onTap: onRightTap,
                 borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.26),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.26),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Text(
-                rightLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w800,
+                  child: Text(
+                    rightLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -631,7 +653,8 @@ class _HomeTopBar extends StatelessWidget {
 
 class _SearchBar extends StatelessWidget {
   final String hint;
-  const _SearchBar({required this.hint});
+  final ValueChanged<String>? onChanged;
+  const _SearchBar({required this.hint, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -647,12 +670,22 @@ class _SearchBar extends StatelessWidget {
         children: [
           const Icon(Icons.search, color: Color(0x7A1C1C1C), size: 28),
           const SizedBox(width: 8),
-          Text(
-            hint,
-            style: const TextStyle(
-              color: Color(0x661C1C1C),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: TextField(
+              onChanged: onChanged,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: hint,
+                hintStyle: const TextStyle(
+                  color: Color(0x661C1C1C),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],

@@ -24,6 +24,7 @@ class PayBillScreen extends StatefulWidget {
 class _PayBillScreenState extends State<PayBillScreen> {
   final _api = KutootApi();
   final _amountController = TextEditingController(text: '200');
+  final _dealsScrollController = ScrollController();
   late final Razorpay _razorpay;
 
   bool _loadingCampaigns = true;
@@ -53,6 +54,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
   void dispose() {
     _razorpay.clear();
     _amountController.dispose();
+    _dealsScrollController.dispose();
     super.dispose();
   }
 
@@ -567,11 +569,13 @@ class _PayBillScreenState extends State<PayBillScreen> {
                       const Icon(Icons.stars,
                           color: AppTheme.tertiary, size: 18),
                       const SizedBox(width: 8),
-                      Text(
-                        'You will earn $stampsEarned stamps from this visit',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                      Flexible(
+                        child: Text(
+                          'You will earn $stampsEarned stamps from this visit',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -581,20 +585,30 @@ class _PayBillScreenState extends State<PayBillScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Vibrant Deals',
+              const Text('Vibrant Deals',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-              Text('View All',
-                  style: TextStyle(
-                      color: AppTheme.primary, fontWeight: FontWeight.w700)),
+              GestureDetector(
+                onTap: () {
+                  _dealsScrollController.animateTo(
+                    _dealsScrollController.position.maxScrollExtent,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOut,
+                  );
+                },
+                child: const Text('View All',
+                    style: TextStyle(
+                        color: AppTheme.primary, fontWeight: FontWeight.w700)),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           SizedBox(
             height: 150,
             child: ListView.builder(
+              controller: _dealsScrollController,
               scrollDirection: Axis.horizontal,
               itemCount: _couponOptions().length,
               itemBuilder: (_, i) {
@@ -605,13 +619,20 @@ class _PayBillScreenState extends State<PayBillScreen> {
                   coupon: c,
                   selected: selected,
                   eligible: eligible,
-                  onTap: () => setState(() {
+                  onTap: () {
                     if (selected) {
-                      _selectedCouponCode = null;
+                      setState(() => _selectedCouponCode = null);
+                    } else if (eligible) {
+                      setState(() => _selectedCouponCode = c.code);
                     } else {
-                      _selectedCouponCode = c.code;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'This coupon requires ${c.minPlan} plan or above.'),
+                        ),
+                      );
                     }
-                  }),
+                  },
                 );
               },
             ),
@@ -759,6 +780,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
               label,
               style: TextStyle(
                 fontWeight: highlight ? FontWeight.w800 : FontWeight.w500,
+                fontSize: highlight ? 18 : 14,
               ),
             ),
           ),
@@ -767,6 +789,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
             style: TextStyle(
               color: amount < 0 ? const Color(0xFF2E7D32) : null,
               fontWeight: highlight ? FontWeight.w900 : FontWeight.w600,
+              fontSize: highlight ? 18 : 14,
             ),
           ),
         ],

@@ -72,10 +72,16 @@ class _QrScanScreenState extends State<QrScanScreen> {
     });
     try {
       final res = await _api.scanQr(token);
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
-      final payload = data['data'] is Map ? Map<String, dynamic>.from(data['data'] as Map) : data;
+      final data = res.data is Map
+          ? Map<String, dynamic>.from(res.data as Map)
+          : <String, dynamic>{};
+      final payload = data['data'] is Map
+          ? Map<String, dynamic>.from(data['data'] as Map)
+          : data;
       final merchantLocation = payload['merchant_location'];
-      final branchName = merchantLocation is Map ? (merchantLocation['branch_name']?.toString() ?? 'merchant') : 'merchant';
+      final branchName = merchantLocation is Map
+          ? (merchantLocation['branch_name']?.toString() ?? 'merchant')
+          : 'merchant';
       final msg = payload['message']?.toString() ?? 'Connected to $branchName';
 
       if (mounted) {
@@ -84,7 +90,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
           _message = msg;
           _lastScanData = payload;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (mounted) {
@@ -118,7 +125,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
             ? [
                 TextButton(
                   onPressed: () => setState(() => _showManualEntry = false),
-                  child: const Text('Scan', style: TextStyle(color: Colors.white)),
+                  child:
+                      const Text('Scan', style: TextStyle(color: Colors.white)),
                 ),
               ]
             : null,
@@ -140,8 +148,16 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _processing ? null : () => _submitCode(_codeController.text),
-                      child: _processing ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Submit'),
+                      onPressed: _processing
+                          ? null
+                          : () => _submitCode(_codeController.text),
+                      child: _processing
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Submit'),
                     ),
                   ),
                   if (_message != null) ...[
@@ -152,50 +168,56 @@ class _QrScanScreenState extends State<QrScanScreen> {
               ),
             )
           : Stack(
-        children: [
-          MobileScanner(onDetect: _onDetect, controller: _controller),
-          if (_message != null)
-            Positioned(
-              bottom: 40,
-              left: 20,
-              right: 20,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _lastScanData != null ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(12),
+              children: [
+                MobileScanner(onDetect: _onDetect, controller: _controller),
+                if (_message != null)
+                  Positioned(
+                    bottom: 40,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:
+                            _lastScanData != null ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(_message!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                if (_lastScanData != null)
+                  Positioned(
+                    bottom: 92,
+                    left: 20,
+                    right: 20,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context, _lastScanData),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Continue'),
+                    ),
+                  ),
+                if (_processing)
+                  const Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary),
+                  ),
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _showManualEntry = true),
+                    icon: const Icon(Icons.keyboard_alt_outlined,
+                        color: Colors.white),
+                    label: const Text('Enter code manually',
+                        style: TextStyle(color: Colors.white)),
+                  ),
                 ),
-                child: Text(_message!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
-              ),
+              ],
             ),
-          if (_lastScanData != null)
-            Positioned(
-              bottom: 92,
-              left: 20,
-              right: 20,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context, _lastScanData),
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Continue'),
-              ),
-            ),
-          if (_processing)
-            const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary),
-            ),
-          Positioned(
-            bottom: 20,
-            left: 20,
-            right: 20,
-            child: TextButton.icon(
-              onPressed: () => setState(() => _showManualEntry = true),
-              icon: const Icon(Icons.keyboard_alt_outlined, color: Colors.white),
-              label: const Text('Enter code manually', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

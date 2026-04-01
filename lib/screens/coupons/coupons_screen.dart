@@ -32,22 +32,41 @@ class _CouponsScreenState extends State<CouponsScreen> {
       final data = res.data;
       if (data is Map && data['data'] is Map) {
         final payload = data['data'] as Map;
-        final plan = payload['plan_coupons'] is List ? payload['plan_coupons'] as List : <dynamic>[];
-        final store = payload['store_coupons'] is List ? payload['store_coupons'] as List : <dynamic>[];
-        final other = payload['other_coupons'] is List ? payload['other_coupons'] as List : <dynamic>[];
+        final plan = payload['plan_coupons'] is List
+            ? payload['plan_coupons'] as List
+            : <dynamic>[];
+        final store = payload['store_coupons'] is List
+            ? payload['store_coupons'] as List
+            : <dynamic>[];
+        final other = payload['other_coupons'] is List
+            ? payload['other_coupons'] as List
+            : <dynamic>[];
 
         List<Map<String, dynamic>> cast(List<dynamic> source, String segment) {
           return source
               .whereType<Map>()
-              .map((e) => <String, dynamic>{...Map<String, dynamic>.from(e), 'segment_label': segment})
+              .map((e) => <String, dynamic>{
+                    ...Map<String, dynamic>.from(e),
+                    'segment_label': segment
+                  })
               .toList();
         }
 
-        _coupons = [...cast(store, 'Store'), ...cast(plan, 'Plan'), ...cast(other, 'Other')];
+        _coupons = [
+          ...cast(store, 'Store'),
+          ...cast(plan, 'Plan'),
+          ...cast(other, 'Other')
+        ];
       } else if (data is Map && data['data'] is List) {
-        _coupons = (data['data'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _coupons = (data['data'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
       } else if (data is List) {
-        _coupons = data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _coupons = data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
       }
     } catch (e) {
       _error = e.toString();
@@ -62,11 +81,14 @@ class _CouponsScreenState extends State<CouponsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Coupons', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('My Coupons',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -74,7 +96,8 @@ class _CouponsScreenState extends State<CouponsScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -92,7 +115,11 @@ class _CouponsScreenState extends State<CouponsScreen> {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => CouponDetailScreen(couponId: c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}') ?? 0, coupon: c),
+                                builder: (_) => CouponDetailScreen(
+                                    couponId: c['id'] is int
+                                        ? c['id'] as int
+                                        : int.tryParse('${c['id']}') ?? 0,
+                                    coupon: c),
                               ),
                             ).then((_) => _load()),
                           );
@@ -120,11 +147,17 @@ class _CouponCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         leading: Container(
           width: 48,
@@ -133,10 +166,14 @@ class _CouponCard extends StatelessWidget {
             color: AppTheme.primary.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.local_offer_rounded, color: AppTheme.primary, size: 28),
+          child: const Icon(Icons.local_offer_rounded,
+              color: AppTheme.primary, size: 28),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: desc.isNotEmpty ? Text(desc.toString(), maxLines: 2, overflow: TextOverflow.ellipsis) : null,
+        subtitle: desc.isNotEmpty
+            ? Text(desc.toString(),
+                maxLines: 2, overflow: TextOverflow.ellipsis)
+            : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -148,7 +185,11 @@ class _CouponCard extends StatelessWidget {
                   color: Colors.blue.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(segment, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.blue)),
+                child: Text(segment,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue)),
               ),
             if (status.toString().isNotEmpty)
               Container(
@@ -157,10 +198,13 @@ class _CouponCard extends StatelessWidget {
                   color: AppTheme.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(status.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                child: Text(status.toString(),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w500)),
               ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppTheme.textSecondary),
           ],
         ),
       ),
@@ -172,7 +216,8 @@ class CouponDetailScreen extends StatefulWidget {
   final int couponId;
   final Map coupon;
 
-  const CouponDetailScreen({super.key, required this.couponId, required this.coupon});
+  const CouponDetailScreen(
+      {super.key, required this.couponId, required this.coupon});
 
   @override
   State<CouponDetailScreen> createState() => _CouponDetailScreenState();
@@ -220,24 +265,31 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
         setState(() => _loading = false);
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
   Future<void> _startRedeemPayment() async {
     if (_paying) return;
     final c = _coupon ?? {};
-    final couponId = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
-    final merchant = c['merchant_location'] is Map ? c['merchant_location'] as Map : null;
-    final merchantLocationId = merchant?['id'] is int ? merchant!['id'] as int : int.tryParse('${merchant?['id']}');
+    final couponId =
+        c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
+    final merchant =
+        c['merchant_location'] is Map ? c['merchant_location'] as Map : null;
+    final merchantLocationId = merchant?['id'] is int
+        ? merchant!['id'] as int
+        : int.tryParse('${merchant?['id']}');
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;
 
     if (couponId == null || merchantLocationId == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coupon payment needs valid amount and merchant location')),
+        const SnackBar(
+            content: Text(
+                'Coupon payment needs valid amount and merchant location')),
       );
       return;
     }
@@ -255,7 +307,9 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
         if (!mounted) return;
         setState(() => _paying = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message']?.toString() ?? 'Coupon redeemed successfully')),
+          SnackBar(
+              content: Text(result['message']?.toString() ??
+                  'Coupon redeemed successfully')),
         );
         await _load();
         return;
@@ -264,10 +318,18 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
       final order = result['order'] is Map ? result['order'] as Map : {};
       final key = order['key']?.toString();
       final orderId = order['id']?.toString();
-      final orderAmount = order['amount'] is int ? order['amount'] as int : int.tryParse('${order['amount']}') ?? 0;
-      _pendingTransactionId = result['transaction_id'] is int ? result['transaction_id'] as int : null;
+      final orderAmount = order['amount'] is int
+          ? order['amount'] as int
+          : int.tryParse('${order['amount']}') ?? 0;
+      _pendingTransactionId = result['transaction_id'] is int
+          ? result['transaction_id'] as int
+          : null;
 
-      if (key == null || key.isEmpty || orderId == null || orderId.isEmpty || orderAmount <= 0) {
+      if (key == null ||
+          key.isEmpty ||
+          orderId == null ||
+          orderId.isEmpty ||
+          orderAmount <= 0) {
         throw Exception('Invalid payment order returned by server');
       }
 
@@ -299,13 +361,17 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
       if (!mounted) return;
       final data = verifyRes.data is Map ? verifyRes.data as Map : {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message']?.toString() ?? 'Payment verified successfully')),
+        SnackBar(
+            content: Text(data['message']?.toString() ??
+                'Payment verified successfully')),
       );
       await _load();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment received. Verification pending for #${_pendingTransactionId ?? '-'}')),
+        SnackBar(
+            content: Text(
+                'Payment received. Verification pending for #${_pendingTransactionId ?? '-'}')),
       );
     } finally {
       if (mounted) setState(() => _paying = false);
@@ -323,7 +389,9 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
   void _onExternalWallet(ExternalWalletResponse response) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('External wallet selected: ${response.walletName ?? '-'}')),
+      SnackBar(
+          content:
+              Text('External wallet selected: ${response.walletName ?? '-'}')),
     );
   }
 
@@ -335,11 +403,14 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Coupon', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Coupon',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(child: Text(_error!))
               : SingleChildScrollView(
@@ -352,34 +423,49 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 12)
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(c['name'] ?? c['title'] ?? 'Coupon',
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                            if ((c['description'] ?? '').toString().isNotEmpty) ...[
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold)),
+                            if ((c['description'] ?? '')
+                                .toString()
+                                .isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              Text(c['description'].toString(), style: const TextStyle(color: AppTheme.textSecondary)),
+                              Text(c['description'].toString(),
+                                  style: const TextStyle(
+                                      color: AppTheme.textSecondary)),
                             ],
                             if ((c['value'] ?? '').toString().isNotEmpty) ...[
                               const SizedBox(height: 12),
-                              Text('Value: ${c['value']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text('Value: ${c['value']}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
                             ],
                             if ((c['code'] ?? '').toString().isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              Text('Code: ${c['code']}', style: const TextStyle(fontFamily: 'monospace')),
+                              Text('Code: ${c['code']}',
+                                  style:
+                                      const TextStyle(fontFamily: 'monospace')),
                             ],
                           ],
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text('Bill Amount', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text('Bill Amount',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         decoration: const InputDecoration(
                           hintText: 'Enter bill amount',
                           prefixText: '₹ ',
@@ -391,14 +477,19 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
                         child: ElevatedButton(
                           onPressed: _paying ? null : _startRedeemPayment,
                           child: _paying
-                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
                               : const Text('Redeem & Pay'),
                         ),
                       ),
                       const SizedBox(height: 20),
                       const Text(
                         'To redeem, show this coupon at the store or use the redeem flow.',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        style: TextStyle(
+                            color: AppTheme.textSecondary, fontSize: 14),
                       ),
                     ],
                   ),

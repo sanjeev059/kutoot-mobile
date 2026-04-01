@@ -72,7 +72,8 @@ class KutootApi {
   Future<Response> getDevOtp(String identifier) =>
       _dio.get('/auth/dev/otp', queryParameters: {'identifier': identifier});
 
-  Future<Response> verifyOtp(String identifier, String otp, {String deviceName = 'flutter-app'}) =>
+  Future<Response> verifyOtp(String identifier, String otp,
+          {String deviceName = 'flutter-app'}) =>
       _dio.post('/auth/otp/verify', data: {
         'identifier': identifier,
         'otp': otp,
@@ -92,9 +93,11 @@ class KutootApi {
 
   Future<Response> getCampaign(int id) => _dio.get('/campaigns/$id');
 
-  Future<Response> getCampaignBounty(int id) => _dio.get('/campaigns/$id/bounty');
+  Future<Response> getCampaignBounty(int id) =>
+      _dio.get('/campaigns/$id/bounty');
 
-  Future<Response> participateInCampaign(int id, {String mode = 'engagement'}) =>
+  Future<Response> participateInCampaign(int id,
+          {String mode = 'engagement'}) =>
       _dio.post('/campaigns/$id/participate', data: {'entry_mode': mode});
 
   // ─── Coupons ──────────────────────────────────────────────────────
@@ -126,9 +129,11 @@ class KutootApi {
       _dio.get('/stamps/reservation/$stampId');
 
   Future<Response> createStampReservationOrder(int stampId, int planId) =>
-      _dio.post('/stamps/reservation/$stampId/create-order', data: {'plan_id': planId});
+      _dio.post('/stamps/reservation/$stampId/create-order',
+          data: {'plan_id': planId});
 
-  Future<Response> confirmStampReservation(int stampId, Map<String, dynamic> data) =>
+  Future<Response> confirmStampReservation(
+          int stampId, Map<String, dynamic> data) =>
       _dio.post('/stamps/reservation/$stampId/confirm', data: data);
 
   Future<Response> cancelStampReservation(int stampId) =>
@@ -137,9 +142,11 @@ class KutootApi {
   // ─── Subscriptions ────────────────────────────────────────────────
   Future<Response> getSubscriptionPlans() => _dio.get('/subscriptions/plans');
 
-  Future<Response> getCurrentSubscription() => _dio.get('/subscriptions/current');
+  Future<Response> getCurrentSubscription() =>
+      _dio.get('/subscriptions/current');
 
-  Future<Response> upgradeSubscription(int planId, {List<int>? campaignSelections}) =>
+  Future<Response> upgradeSubscription(int planId,
+          {List<int>? campaignSelections}) =>
       _dio.post('/subscriptions/upgrade', data: {
         'plan_id': planId,
         'campaign_selections': campaignSelections ?? [],
@@ -153,9 +160,11 @@ class KutootApi {
       _dio.post('/subscriptions/record-consent', data: {'plan_id': planId});
 
   Future<Response> setPrimaryCampaign(int campaignId) =>
-      _dio.post('/subscriptions/primary-campaign', data: {'campaign_id': campaignId});
+      _dio.post('/subscriptions/primary-campaign',
+          data: {'campaign_id': campaignId});
 
-  Future<Response> getAvailableCampaigns() => _dio.get('/subscriptions/available-campaigns');
+  Future<Response> getAvailableCampaigns() =>
+      _dio.get('/subscriptions/available-campaigns');
 
   // ─── Transactions ───────────────────────────────────────────────
   Future<Response> getTransactions({Map<String, dynamic>? params}) =>
@@ -179,7 +188,8 @@ class KutootApi {
   Future<Response> getStoreCategories({Map<String, dynamic>? params}) =>
       _dio.get('/merchant-locations/store-categories', queryParameters: params);
 
-  Future<Response> getStoresByCategory(int categoryId, {Map<String, dynamic>? params}) =>
+  Future<Response> getStoresByCategory(int categoryId,
+          {Map<String, dynamic>? params}) =>
       _dio.get('/store-categories/$categoryId/stores', queryParameters: params);
 
   // ─── Marketing (public) ───────────────────────────────────────────
@@ -193,7 +203,8 @@ class KutootApi {
       _dio.get('/featured-banners', queryParameters: params);
 
   Future<Response> getHeroSettings({String? locale}) =>
-      _dio.get('/hero-settings', queryParameters: locale != null ? {'locale': locale} : null);
+      _dio.get('/hero-settings',
+          queryParameters: locale != null ? {'locale': locale} : null);
 
   // ─── QR Scan ──────────────────────────────────────────────────────
   Future<Response> scanQr(String token) => _dio.get('/qr/$token/scan');

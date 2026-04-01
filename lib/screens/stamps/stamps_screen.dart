@@ -46,28 +46,46 @@ class _StampsScreenState extends State<StampsScreen> {
     });
     try {
       final res = await _api.getStamps();
-      final campaignsRes = await _api.getAvailableCampaigns().catchError((_) => null);
-      final plansRes = await _api.getSubscriptionPlans().catchError((_) => null);
+      final campaignsRes =
+          await _api.getAvailableCampaigns().catchError((_) => null);
+      final plansRes =
+          await _api.getSubscriptionPlans().catchError((_) => null);
       final data = res.data;
       if (data is Map && data['data'] != null) {
         final d = data['data'];
         if (d is List) {
-          _stamps = d.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          _stamps = d
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
         } else {
           _stamps = [];
         }
       } else if (data is List) {
-        _stamps = data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _stamps = data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
       }
 
       if (campaignsRes != null && campaignsRes.data is Map) {
         final d = (campaignsRes.data as Map)['data'];
-        _campaigns = d is List ? d.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : [];
+        _campaigns = d is List
+            ? d
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
+            : [];
       }
 
       if (plansRes != null && plansRes.data is Map) {
         final d = (plansRes.data as Map)['data'];
-        _plans = d is List ? d.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : [];
+        _plans = d is List
+            ? d
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
+            : [];
       }
     } catch (e) {
       _error = e.toString();
@@ -82,12 +100,15 @@ class _StampsScreenState extends State<StampsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Stamps', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('My Stamps',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StampHistoryScreen())),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const StampHistoryScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
@@ -96,7 +117,8 @@ class _StampsScreenState extends State<StampsScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -104,12 +126,15 @@ class _StampsScreenState extends State<StampsScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
               : _stamps.isEmpty
-                  ? const Center(child: Text('No stamps yet. Join a campaign to earn stamps.'))
+                  ? const Center(
+                      child: Text(
+                          'No stamps yet. Join a campaign to earn stamps.'))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.builder(
@@ -117,8 +142,13 @@ class _StampsScreenState extends State<StampsScreen> {
                         itemCount: _stamps.length,
                         itemBuilder: (context, i) {
                           final s = _stamps[i];
-                          final campaign = s['campaign'] is Map ? s['campaign'] as Map : <String, dynamic>{};
-                          final name = campaign['reward_name'] ?? campaign['name'] ?? campaign['code'] ?? 'Stamp';
+                          final campaign = s['campaign'] is Map
+                              ? s['campaign'] as Map
+                              : <String, dynamic>{};
+                          final name = campaign['reward_name'] ??
+                              campaign['name'] ??
+                              campaign['code'] ??
+                              'Stamp';
                           final code = s['code']?.toString() ?? '-';
                           final status = s['status']?.toString() ?? 'active';
                           final isReserved = s['is_reserved'] == true;
@@ -128,7 +158,12 @@ class _StampsScreenState extends State<StampsScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 2))],
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 2))
+                              ],
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -141,19 +176,30 @@ class _StampsScreenState extends State<StampsScreen> {
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color: AppTheme.primary.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: AppTheme.primary
+                                              .withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
-                                        child: const Icon(Icons.star_rounded, color: AppTheme.primary, size: 28),
+                                        child: const Icon(Icons.star_rounded,
+                                            color: AppTheme.primary, size: 28),
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text(name.toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                            Text(name.toString(),
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 16)),
                                             const SizedBox(height: 2),
-                                            Text('Code: $code', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                            Text('Code: $code',
+                                                style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppTheme
+                                                        .textSecondary)),
                                           ],
                                         ),
                                       ),
@@ -165,8 +211,14 @@ class _StampsScreenState extends State<StampsScreen> {
                                     runSpacing: 8,
                                     children: [
                                       _stampTag(label: status),
-                                      if (isReserved) _stampTag(label: 'Reserved', color: Colors.orange),
-                                      if (isEditable) _stampTag(label: 'Editable', color: Colors.blue),
+                                      if (isReserved)
+                                        _stampTag(
+                                            label: 'Reserved',
+                                            color: Colors.orange),
+                                      if (isEditable)
+                                        _stampTag(
+                                            label: 'Editable',
+                                            color: Colors.blue),
                                     ],
                                   ),
                                 ],
@@ -182,13 +234,18 @@ class _StampsScreenState extends State<StampsScreen> {
   Future<void> _openReserveSheet() async {
     if (_campaigns.isEmpty || _plans.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Campaigns or plans are not available right now')),
+        const SnackBar(
+            content: Text('Campaigns or plans are not available right now')),
       );
       return;
     }
 
-    int? selectedCampaignId = _campaigns.first['id'] is int ? _campaigns.first['id'] as int : int.tryParse('${_campaigns.first['id']}');
-    int? selectedPlanId = _plans.first['id'] is int ? _plans.first['id'] as int : int.tryParse('${_plans.first['id']}');
+    int? selectedCampaignId = _campaigns.first['id'] is int
+        ? _campaigns.first['id'] as int
+        : int.tryParse('${_campaigns.first['id']}');
+    int? selectedPlanId = _plans.first['id'] is int
+        ? _plans.first['id'] as int
+        : int.tryParse('${_plans.first['id']}');
 
     final result = await showModalBottomSheet<(int?, int?)>(
       context: context,
@@ -196,20 +253,28 @@ class _StampsScreenState extends State<StampsScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setLocal) => Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.fromLTRB(
+                16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Reserve Stamp', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Reserve Stamp',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   value: selectedCampaignId,
                   decoration: const InputDecoration(labelText: 'Campaign'),
                   items: _campaigns
                       .map((c) => DropdownMenuItem<int>(
-                            value: c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}'),
-                            child: Text(c['name']?.toString() ?? c['reward_name']?.toString() ?? c['code']?.toString() ?? 'Campaign'),
+                            value: c['id'] is int
+                                ? c['id'] as int
+                                : int.tryParse('${c['id']}'),
+                            child: Text(c['name']?.toString() ??
+                                c['reward_name']?.toString() ??
+                                c['code']?.toString() ??
+                                'Campaign'),
                           ))
                       .toList(),
                   onChanged: (v) => setLocal(() => selectedCampaignId = v),
@@ -220,8 +285,11 @@ class _StampsScreenState extends State<StampsScreen> {
                   decoration: const InputDecoration(labelText: 'Plan'),
                   items: _plans
                       .map((p) => DropdownMenuItem<int>(
-                            value: p['id'] is int ? p['id'] as int : int.tryParse('${p['id']}'),
-                            child: Text('${p['name'] ?? 'Plan'} (₹${p['price'] ?? p['amount'] ?? 0})'),
+                            value: p['id'] is int
+                                ? p['id'] as int
+                                : int.tryParse('${p['id']}'),
+                            child: Text(
+                                '${p['name'] ?? 'Plan'} (₹${p['price'] ?? p['amount'] ?? 0})'),
                           ))
                       .toList(),
                   onChanged: (v) => setLocal(() => selectedPlanId = v),
@@ -230,7 +298,8 @@ class _StampsScreenState extends State<StampsScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, (selectedCampaignId, selectedPlanId)),
+                    onPressed: () => Navigator.pop(
+                        context, (selectedCampaignId, selectedPlanId)),
                     child: const Text('Continue'),
                   ),
                 ),
@@ -251,8 +320,11 @@ class _StampsScreenState extends State<StampsScreen> {
     try {
       final reserveRes = await _api.reserveStamp(campaignId);
       final reserveData = reserveRes.data is Map ? reserveRes.data as Map : {};
-      final stamp = reserveData['data'] is Map ? reserveData['data'] as Map : {};
-      final stampId = stamp['id'] is int ? stamp['id'] as int : int.tryParse('${stamp['id']}');
+      final stamp =
+          reserveData['data'] is Map ? reserveData['data'] as Map : {};
+      final stampId = stamp['id'] is int
+          ? stamp['id'] as int
+          : int.tryParse('${stamp['id']}');
       if (stampId == null) throw Exception('Invalid reservation response');
 
       _pendingStampId = stampId;
@@ -262,9 +334,15 @@ class _StampsScreenState extends State<StampsScreen> {
       final order = body['order'] is Map ? body['order'] as Map : {};
       final key = order['key']?.toString();
       final orderId = order['id']?.toString();
-      final amount = order['amount'] is int ? order['amount'] as int : int.tryParse('${order['amount']}') ?? 0;
+      final amount = order['amount'] is int
+          ? order['amount'] as int
+          : int.tryParse('${order['amount']}') ?? 0;
 
-      if (key == null || key.isEmpty || orderId == null || orderId.isEmpty || amount <= 0) {
+      if (key == null ||
+          key.isEmpty ||
+          orderId == null ||
+          orderId.isEmpty ||
+          amount <= 0) {
         throw Exception('Invalid payment order for reservation');
       }
 
@@ -305,7 +383,9 @@ class _StampsScreenState extends State<StampsScreen> {
       if (!mounted) return;
       final data = confirmRes.data is Map ? confirmRes.data as Map : {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message']?.toString() ?? 'Stamp confirmed successfully')),
+        SnackBar(
+            content: Text(
+                data['message']?.toString() ?? 'Stamp confirmed successfully')),
       );
       await _load();
     } catch (e) {
@@ -350,7 +430,9 @@ class _StampsScreenState extends State<StampsScreen> {
         color: color.withOpacity(0.14),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }

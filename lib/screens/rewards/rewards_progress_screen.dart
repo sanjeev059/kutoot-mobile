@@ -21,7 +21,9 @@ class RewardsProgressScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Rewards Progress', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Rewards Progress',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: SingleChildScrollView(
@@ -39,30 +41,43 @@ class RewardsProgressScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$brandName Progress', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('$brandName Progress',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(total, (i) => Icon(
-                      i < earned ? Icons.star_rounded : Icons.star_border_rounded,
-                      size: 40,
-                      color: i < earned ? AppTheme.primary : Colors.grey.shade300,
-                    )),
+                    children: List.generate(
+                        total,
+                        (i) => Icon(
+                              i < earned
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              size: 40,
+                              color: i < earned
+                                  ? AppTheme.primary
+                                  : Colors.grey.shade300,
+                            )),
                   ),
                   const SizedBox(height: 12),
-                  Text('$earned / $total stars', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text('$earned / $total stars',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            const Text('How to Earn', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('How to Earn',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.06), blurRadius: 12)
+                ],
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,33 +91,45 @@ class RewardsProgressScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Recent Activity',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ...activities.map((a) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.store_rounded, color: AppTheme.primary),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(a.$1, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(a.$2, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                      ],
-                    ),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.06), blurRadius: 12)
+                    ],
                   ),
-                  Text(a.$3, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            )),
+                  child: Row(
+                    children: [
+                      Icon(Icons.store_rounded, color: AppTheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(a.$1,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            Text(a.$2,
+                                style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      Text(a.$3,
+                          style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                )),
           ],
         ),
       ),

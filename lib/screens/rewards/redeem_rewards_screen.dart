@@ -16,12 +16,26 @@ class _RedeemRewardsScreenState extends State<RedeemRewardsScreen> {
   final _categories = ['All', 'Beverage', 'Food', 'Retail'];
 
   final _featuredRewards = [
-    {'name': 'Signature Roast Latte', 'points': 250, 'provider': 'Robert Premium Roasters', 'image': null},
-    {'name': 'Artisan Pastry', 'points': 150, 'provider': 'The Coffee Artisan', 'image': null},
+    {
+      'name': 'Signature Roast Latte',
+      'points': 250,
+      'provider': 'Robert Premium Roasters',
+      'image': null
+    },
+    {
+      'name': 'Artisan Pastry',
+      'points': 150,
+      'provider': 'The Coffee Artisan',
+      'image': null
+    },
   ];
 
   final _retailDiscounts = [
-    {'name': '20% Off Next Purchase', 'points': 100, 'provider': 'Urban Threads'},
+    {
+      'name': '20% Off Next Purchase',
+      'points': 100,
+      'provider': 'Urban Threads'
+    },
     {'name': 'Flat ₹500 Off', 'points': 300, 'provider': 'Elite Fashion Hub'},
   ];
 
@@ -32,7 +46,9 @@ class _RedeemRewardsScreenState extends State<RedeemRewardsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Redeem Rewards', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Redeem Rewards',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: SingleChildScrollView(
@@ -46,7 +62,9 @@ class _RedeemRewardsScreenState extends State<RedeemRewardsScreen> {
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 16),
@@ -67,25 +85,39 @@ class _RedeemRewardsScreenState extends State<RedeemRewardsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Featured Rewards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Featured Rewards',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ..._featuredRewards.map((r) => _RewardTile(
-              name: (r['name'] ?? '').toString(),
-              points: r['points'] is int ? r['points'] as int : int.tryParse(r['points']?.toString() ?? '0') ?? 0,
-              provider: (r['provider'] ?? '').toString(),
-              imageUrl: ImageUtils.fromMap(r is Map ? Map<String, dynamic>.from(r) : null),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RewardDetailsScreen(reward: r))),
-            )),
+                  name: (r['name'] ?? '').toString(),
+                  points: r['points'] is int
+                      ? r['points'] as int
+                      : int.tryParse(r['points']?.toString() ?? '0') ?? 0,
+                  provider: (r['provider'] ?? '').toString(),
+                  imageUrl: ImageUtils.fromMap(
+                      r is Map ? Map<String, dynamic>.from(r) : null),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => RewardDetailsScreen(reward: r))),
+                )),
             const SizedBox(height: 24),
-            const Text('Retail Discounts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Retail Discounts',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ..._retailDiscounts.map((r) => _RewardTile(
-              name: (r['name'] ?? '').toString(),
-              points: r['points'] is int ? r['points'] as int : int.tryParse(r['points']?.toString() ?? '0') ?? 0,
-              provider: (r['provider'] ?? '').toString(),
-              imageUrl: ImageUtils.fromMap(r is Map ? Map<String, dynamic>.from(r) : null),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RewardDetailsScreen(reward: r))),
-            )),
+                  name: (r['name'] ?? '').toString(),
+                  points: r['points'] is int
+                      ? r['points'] as int
+                      : int.tryParse(r['points']?.toString() ?? '0') ?? 0,
+                  provider: (r['provider'] ?? '').toString(),
+                  imageUrl: ImageUtils.fromMap(
+                      r is Map ? Map<String, dynamic>.from(r) : null),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => RewardDetailsScreen(reward: r))),
+                )),
           ],
         ),
       ),
@@ -100,7 +132,12 @@ class _RewardTile extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback onTap;
 
-  const _RewardTile({required this.name, required this.points, required this.provider, this.imageUrl, required this.onTap});
+  const _RewardTile(
+      {required this.name,
+      required this.points,
+      required this.provider,
+      this.imageUrl,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +146,9 @@ class _RewardTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+        ],
       ),
       child: ListTile(
         onTap: onTap,
@@ -122,24 +161,37 @@ class _RewardTile extends StatelessWidget {
                   width: 56,
                   height: 56,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.card_giftcard_rounded, color: AppTheme.primary, size: 28)),
-                  errorWidget: (_, __, ___) => Container(color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.card_giftcard_rounded, color: AppTheme.primary, size: 28)),
+                  placeholder: (_, __) => Container(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      child: const Icon(Icons.card_giftcard_rounded,
+                          color: AppTheme.primary, size: 28)),
+                  errorWidget: (_, __, ___) => Container(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      child: const Icon(Icons.card_giftcard_rounded,
+                          color: AppTheme.primary, size: 28)),
                 )
               : Container(
                   width: 56,
                   height: 56,
-                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.card_giftcard_rounded, color: AppTheme.primary, size: 28),
+                  decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.card_giftcard_rounded,
+                      color: AppTheme.primary, size: 28),
                 ),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(provider, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        subtitle: Text(provider,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('$points Stars', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-            const Text('Redeem', style: TextStyle(fontSize: 12, color: AppTheme.primary)),
+            Text('$points Stars',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: AppTheme.primary)),
+            const Text('Redeem',
+                style: TextStyle(fontSize: 12, color: AppTheme.primary)),
           ],
         ),
       ),

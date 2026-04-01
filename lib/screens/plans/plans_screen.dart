@@ -96,51 +96,57 @@ class _PlansTopBar extends StatelessWidget {
       height: 66,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       color: Colors.white.withOpacity(0.92),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+          Center(
+            child: Image.asset(
+              'assets/images/k_logo.png',
+              height: 48,
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on,
-                    size: 15, color: AppTheme.secondary),
-                const SizedBox(width: 2),
-                Text(
-                  '$cityName ▾',
-                  style: const TextStyle(
-                    color: AppTheme.secondary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                  ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border:
+                      Border.all(color: AppTheme.secondary.withOpacity(0.20)),
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Image.asset(
-                'assets/images/k_logo.png',
-                height: 48,
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on,
+                        size: 15, color: AppTheme.secondary),
+                    const SizedBox(width: 2),
+                    Text(
+                      '$cityName ▾',
+                      style: const TextStyle(
+                        color: AppTheme.secondary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5E5DB),
+              InkWell(
+                onTap: () => Navigator.pop(context),
                 borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5E5DB),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Icon(Icons.close, color: AppTheme.textPrimary),
+                ),
               ),
-              child: const Icon(Icons.close, color: AppTheme.textPrimary),
-            ),
+            ],
           ),
         ],
       ),
@@ -324,16 +330,14 @@ class _PlanCard extends StatelessWidget {
                   height: 48,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.14),
+                    color: Colors.white.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.white.withOpacity(0.22)),
                   ),
                   child: Text(
-                    selected ? 'SELECTED' : 'SELECT ${plan.name.toUpperCase()}',
-                    style: TextStyle(
-                      color: selected ? plan.gradient.first : Colors.white,
+                    'SELECT ${plan.name.toUpperCase()}',
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontWeight: FontWeight.w900,
                       fontSize: 12,
                       letterSpacing: 1.1,
@@ -494,6 +498,20 @@ class _PlanData {
 
 const List<_PlanData> _plans = [
   _PlanData(
+    name: 'Free',
+    tier: 'FREE TIER',
+    price: '0',
+    validity: 'Forever',
+    maxBills: '5 Trans.',
+    maxRedeem: '₹500',
+    earnRate: '1 / ₹2000',
+    bonus: '0 Stamps',
+    icon: Icons.person_outline,
+    badges: [],
+    deals: ['Basic Merchant'],
+    gradient: [Color(0xFF9E9E9E), Color(0xFF616161)],
+  ),
+  _PlanData(
     name: 'Basic',
     tier: 'TIER I MEMBERSHIP',
     price: '149',
@@ -519,7 +537,7 @@ const List<_PlanData> _plans = [
     icon: Icons.workspace_premium,
     badges: ['Popular'],
     deals: ['Merchant', 'Platform', 'Bank'],
-    gradient: [Color(0xFFAE1E3F), Color(0xFF6B0E2A)],
+    gradient: [Color(0xFFA04100), Color(0xFF612500)],
   ),
   _PlanData(
     name: 'VIP',

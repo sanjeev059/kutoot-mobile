@@ -16,7 +16,9 @@ class RewardsScreen extends StatelessWidget {
         elevation: 0,
         title: Text(
           'Rewards',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.bold),
         ),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
@@ -51,7 +53,8 @@ class RewardsScreen extends StatelessWidget {
               icon: Icons.trending_up_rounded,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const RewardsProgressScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const RewardsProgressScreen()),
               ),
             ),
             const SizedBox(height: 20),
@@ -78,12 +81,16 @@ class RewardsScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Your Reward Points',
-                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.8), fontSize: 14),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     '2,450',
-                    style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -92,11 +99,13 @@ class RewardsScreen extends StatelessWidget {
                         child: OutlinedButton(
                           onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const RewardsProgressScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const RewardsProgressScreen()),
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withOpacity(0.6)),
+                            side: BorderSide(
+                                color: Colors.white.withOpacity(0.6)),
                           ),
                           child: const Text('Earn More'),
                         ),
@@ -106,7 +115,8 @@ class RewardsScreen extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const RedeemRewardsScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const RedeemRewardsScreen()),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
@@ -126,12 +136,16 @@ class RewardsScreen extends StatelessWidget {
               children: [
                 Text(
                   'Available Rewards',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const RedeemRewardsScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const RedeemRewardsScreen()),
                   ),
                   child: const Text('See all'),
                 ),
@@ -178,7 +192,12 @@ class _RewardCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+            boxShadow: isDark
+                ? []
+                : [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.06), blurRadius: 12)
+                  ],
           ),
           child: Row(
             children: [
@@ -196,13 +215,20 @@ class _RewardCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: onSurface)),
+                    Text(title,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: onSurface)),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(color: onSurface.withOpacity(0.7), fontSize: 13)),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: onSurface.withOpacity(0.7), fontSize: 13)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: onSurface.withOpacity(0.7)),
+              Icon(Icons.chevron_right_rounded,
+                  color: onSurface.withOpacity(0.7)),
             ],
           ),
         ),
@@ -228,7 +254,9 @@ class _AvailableRewardRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+        boxShadow: isDark
+            ? []
+            : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Row(
         children: [
@@ -236,9 +264,17 @@ class _AvailableRewardRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: onSurface)),
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: onSurface)),
                 const SizedBox(height: 2),
-                Text(points, style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                Text(points,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w600)),
               ],
             ),
           ),

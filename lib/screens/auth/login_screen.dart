@@ -13,10 +13,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   static const String _logoAsset = 'assets/images/k_logo.png';
-  static const String _foodUrl =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuC06zacuaFHV7P-wH411KFYqyKJLIK0XTTeAP70OfLWmymHrVRqEho2VwUnxu-YmebUZ6JL7TjRvtZKOciLBQxYoIpQSbhZTUSS3DPjqUMiRR2BlqWNHqpWQSGEfaPI7ONZpThLHdM08wgJVC5X8bPg9JHy9os-qRvLTV7IBad7zfsX5FkOgV_dIfN9dDlphX7MQwsMWAPkHyFsa28eLv5RfTb59hu8IUJIEx0CnEGXHm_IilrRBycwlH1MEv_nDW5ky4im2vCWiw';
-  static const String _storeUrl =
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBqkzOJPr5UReWxGrO2BEWCe3xlo3mvrfsq8iHPYHw7dXg5Y9p0plNjKz3nWvVj5wSOHMyow74dzd_wBD1_539E6nH0zloIxyI8HQb4brpaAzFHpuvpw8I5qM-itOTIIdPnctJM12I0tHkwDb50QN1skba1AwF4S4df5xUaQVBdSYmexjdZU-RhhIOjj-kTSeSqPkCZMW4h4-EfGc9QASpdoCk0nsW8ayqpcoJ73qisTL5Go1ClurvKZo72UidlkwqVLP16O72kZQ';
 
   final TextEditingController _mobileController = TextEditingController();
 
@@ -264,70 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _EditorialTile(
-                              label: 'Fresh Delivery', imageUrl: _foodUrl),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Transform.translate(
-                            offset: const Offset(0, 14),
-                            child: _EditorialTile(
-                                label: 'Local Shops', imageUrl: _storeUrl),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditorialTile extends StatelessWidget {
-  final String label;
-  final String imageUrl;
-
-  const _EditorialTile({required this.label, required this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 128,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(imageUrl, fit: BoxFit.cover),
-            Container(
-                color: AppTheme.surfaceContainerLow.withValues(alpha: 0.66)),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x99FFF1E8)],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 10,
-              bottom: 10,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: AppTheme.primary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
                 ),
               ),
             ),

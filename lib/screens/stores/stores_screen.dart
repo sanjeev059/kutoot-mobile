@@ -47,7 +47,10 @@ class _StoresScreenState extends State<StoresScreen> {
         });
         if (cats.isNotEmpty && _selectedCategoryId == null) {
           final firstId = cats[0] is Map ? (cats[0] as Map)['id'] : null;
-          if (firstId != null) _loadStores(firstId is int ? firstId : int.tryParse(firstId.toString()) ?? 0);
+          if (firstId != null)
+            _loadStores(firstId is int
+                ? firstId
+                : int.tryParse(firstId.toString()) ?? 0);
         } else if (cats.isEmpty) {
           _loadMerchantLocations();
         }
@@ -67,15 +70,17 @@ class _StoresScreenState extends State<StoresScreen> {
       } else if (data is List) {
         stores = data;
       }
-      if (mounted) setState(() {
-        _stores = stores;
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _stores = stores;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -93,15 +98,17 @@ class _StoresScreenState extends State<StoresScreen> {
       } else if (data is List) {
         stores = data;
       }
-      if (mounted) setState(() {
-        _stores = stores;
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _stores = stores;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -112,11 +119,14 @@ class _StoresScreenState extends State<StoresScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Stores', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Stores',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading && _stores.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null && _stores.isEmpty
               ? Center(
                   child: Column(
@@ -124,7 +134,9 @@ class _StoresScreenState extends State<StoresScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _loadCategories, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _loadCategories,
+                          child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -135,10 +147,13 @@ class _StoresScreenState extends State<StoresScreen> {
                         height: 48,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           itemCount: _categories.length,
                           itemBuilder: (context, i) {
-                            final c = _categories[i] is Map ? _categories[i] as Map : {};
+                            final c = _categories[i] is Map
+                                ? _categories[i] as Map
+                                : {};
                             final id = c['id'];
                             final name = c['name'] ?? 'Category';
                             final isSelected = _selectedCategoryId == id;
@@ -146,7 +161,8 @@ class _StoresScreenState extends State<StoresScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: FilterChip(
-                                avatar: catImageUrl != null && catImageUrl.isNotEmpty
+                                avatar: catImageUrl != null &&
+                                        catImageUrl.isNotEmpty
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: CachedNetworkImage(
@@ -154,17 +170,28 @@ class _StoresScreenState extends State<StoresScreen> {
                                           width: 24,
                                           height: 24,
                                           fit: BoxFit.cover,
-                                          placeholder: (_, __) => Icon(Icons.category_rounded, size: 24, color: AppTheme.primary),
-                                          errorWidget: (_, __, ___) => Icon(Icons.category_rounded, size: 24, color: AppTheme.primary),
+                                          placeholder: (_, __) => Icon(
+                                              Icons.category_rounded,
+                                              size: 24,
+                                              color: AppTheme.primary),
+                                          errorWidget: (_, __, ___) => Icon(
+                                              Icons.category_rounded,
+                                              size: 24,
+                                              color: AppTheme.primary),
                                         ),
                                       )
-                                    : Icon(Icons.category_rounded, size: 24, color: AppTheme.primary),
+                                    : Icon(Icons.category_rounded,
+                                        size: 24, color: AppTheme.primary),
                                 label: Text(name),
                                 selected: isSelected,
                                 onSelected: (_) {
-                                  if (id != null) _loadStores(id is int ? id : int.tryParse(id.toString()) ?? 0);
+                                  if (id != null)
+                                    _loadStores(id is int
+                                        ? id
+                                        : int.tryParse(id.toString()) ?? 0);
                                 },
-                                selectedColor: AppTheme.primary.withOpacity(0.3),
+                                selectedColor:
+                                    AppTheme.primary.withOpacity(0.3),
                               ),
                             );
                           },
@@ -172,49 +199,99 @@ class _StoresScreenState extends State<StoresScreen> {
                       ),
                     Expanded(
                       child: _stores.isEmpty
-                          ? const Center(child: Text('No stores in this category'))
+                          ? const Center(
+                              child: Text('No stores in this category'))
                           : RefreshIndicator(
-                              onRefresh: () => _selectedCategoryId != null ? _loadStores(_selectedCategoryId!) : _loadCategories(),
+                              onRefresh: () => _selectedCategoryId != null
+                                  ? _loadStores(_selectedCategoryId!)
+                                  : _loadCategories(),
                               child: ListView.builder(
                                 padding: const EdgeInsets.all(16),
                                 itemCount: _stores.length,
                                 itemBuilder: (context, i) {
-                                  final s = _stores[i] is Map ? _stores[i] as Map : {};
-                                  final name = s['branch_name'] ?? s['name'] ?? s['store_name'] ?? 'Store';
-                                  final address = s['address'] ?? s['location'] ?? '';
+                                  final s = _stores[i] is Map
+                                      ? _stores[i] as Map
+                                      : {};
+                                  final name = s['branch_name'] ??
+                                      s['name'] ??
+                                      s['store_name'] ??
+                                      'Store';
+                                  final address =
+                                      s['address'] ?? s['location'] ?? '';
                                   final storeImageUrl = ImageUtils.fromStore(s);
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.06),
+                                            blurRadius: 12)
+                                      ],
                                     ),
                                     child: ListTile(
-                                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StoreProfileScreen(store: Map.from(s)))),
+                                      onTap: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  StoreProfileScreen(
+                                                      store: Map.from(s)))),
                                       contentPadding: const EdgeInsets.all(16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16)),
                                       leading: ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
-                                        child: storeImageUrl != null && storeImageUrl.isNotEmpty
+                                        child: storeImageUrl != null &&
+                                                storeImageUrl.isNotEmpty
                                             ? CachedNetworkImage(
                                                 imageUrl: storeImageUrl,
                                                 width: 48,
                                                 height: 48,
                                                 fit: BoxFit.cover,
-                                                placeholder: (_, __) => Container(color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 28)),
-                                                errorWidget: (_, __, ___) => Container(color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 28)),
+                                                placeholder: (_, __) =>
+                                                    Container(
+                                                        color: AppTheme.primary
+                                                            .withOpacity(0.15),
+                                                        child: const Icon(
+                                                            Icons.store_rounded,
+                                                            color: AppTheme
+                                                                .primary,
+                                                            size: 28)),
+                                                errorWidget: (_, __, ___) =>
+                                                    Container(
+                                                        color: AppTheme.primary
+                                                            .withOpacity(0.15),
+                                                        child: const Icon(
+                                                            Icons.store_rounded,
+                                                            color: AppTheme
+                                                                .primary,
+                                                            size: 28)),
                                               )
                                             : Container(
                                                 width: 48,
                                                 height: 48,
-                                                color: AppTheme.primary.withOpacity(0.15),
-                                                child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
+                                                color: AppTheme.primary
+                                                    .withOpacity(0.15),
+                                                child: const Icon(
+                                                    Icons.store_rounded,
+                                                    color: AppTheme.primary,
+                                                    size: 28),
                                               ),
                                       ),
-                                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      subtitle: address.toString().isNotEmpty ? Text(address.toString(), maxLines: 2, overflow: TextOverflow.ellipsis) : null,
-                                      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+                                      title: Text(name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600)),
+                                      subtitle: address.toString().isNotEmpty
+                                          ? Text(address.toString(),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis)
+                                          : null,
+                                      trailing: const Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: AppTheme.textSecondary),
                                     ),
                                   );
                                 },

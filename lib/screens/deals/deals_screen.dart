@@ -39,11 +39,19 @@ class _DealsScreenState extends State<DealsScreen> {
         _api.getMerchantLocations().catchError((_) => null),
       ]);
       if (mounted) {
-        if (results[0] != null && results[0].data is Map && (results[0].data as Map)['data'] != null) {
-          _featured = (results[0].data as Map)['data'] is List ? (results[0].data as Map)['data'] as List : [];
+        if (results[0] != null &&
+            results[0].data is Map &&
+            (results[0].data as Map)['data'] != null) {
+          _featured = (results[0].data as Map)['data'] is List
+              ? (results[0].data as Map)['data'] as List
+              : [];
         }
-        if (results[1] != null && results[1].data is Map && (results[1].data as Map)['data'] != null) {
-          _stores = (results[1].data as Map)['data'] is List ? (results[1].data as Map)['data'] as List : [];
+        if (results[1] != null &&
+            results[1].data is Map &&
+            (results[1].data as Map)['data'] != null) {
+          _stores = (results[1].data as Map)['data'] is List
+              ? (results[1].data as Map)['data'] as List
+              : [];
         }
         setState(() => _loading = false);
       }
@@ -60,19 +68,33 @@ class _DealsScreenState extends State<DealsScreen> {
                 category: s.$2,
                 rating: s.$3,
                 imageUrl: null,
-                onViewDeal: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StoreProfileScreen(store: {'name': s.$1, 'category': s.$2}))),
+                onViewDeal: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => StoreProfileScreen(
+                            store: {'name': s.$1, 'category': s.$2}))),
               ))
           .toList();
     }
     return _stores.take(5).map((s) {
       final store = s is Map ? s : {};
-      final merchant = store['merchant'] is Map ? store['merchant'] as Map : null;
+      final merchant =
+          store['merchant'] is Map ? store['merchant'] as Map : null;
       return _StoreDealCard(
-        name: store['branch_name'] ?? store['name'] ?? store['store_name'] ?? 'Store',
+        name: store['branch_name'] ??
+            store['name'] ??
+            store['store_name'] ??
+            'Store',
         category: merchant?['name'] ?? 'Store',
-        rating: () { final r = store['star_rating'] ?? 4.5; return r is num ? (r as num).toDouble() : 4.5; }(),
+        rating: () {
+          final r = store['star_rating'] ?? 4.5;
+          return r is num ? (r as num).toDouble() : 4.5;
+        }(),
         imageUrl: ImageUtils.fromStore(store),
-        onViewDeal: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StoreProfileScreen(store: Map.from(store)))),
+        onViewDeal: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => StoreProfileScreen(store: Map.from(store)))),
       );
     }).toList();
   }
@@ -88,7 +110,9 @@ class _DealsScreenState extends State<DealsScreen> {
           children: [
             Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
             const SizedBox(width: 8),
-            const Text('Kutoot', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+            const Text('Kutoot',
+                style: TextStyle(
+                    color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
           ],
         ),
         foregroundColor: AppTheme.textPrimary,
@@ -135,13 +159,17 @@ class _DealsScreenState extends State<DealsScreen> {
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Featured Deals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text('Featured Deals',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 height: 160,
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                    ? const Center(
+                        child:
+                            CircularProgressIndicator(color: AppTheme.primary))
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -150,14 +178,21 @@ class _DealsScreenState extends State<DealsScreen> {
                           if (_featured.isEmpty) {
                             return _FeaturedCard(
                               title: 'Deal ${i + 1}',
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())),
+                              onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const CampaignsScreen())),
                             );
                           }
-                          final f = _featured[i] is Map ? _featured[i] as Map : {};
+                          final f =
+                              _featured[i] is Map ? _featured[i] as Map : {};
                           return _FeaturedCard(
                             title: f['title'] ?? f['name'] ?? 'Deal',
                             imageUrl: ImageUtils.fromBanner(f),
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())),
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const CampaignsScreen())),
                           );
                         },
                       ),
@@ -168,9 +203,14 @@ class _DealsScreenState extends State<DealsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Nearby Stores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Nearby Stores',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
                     TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoresScreen())),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const StoresScreen())),
                       child: const Text('See all'),
                     ),
                   ],
@@ -198,7 +238,8 @@ class _FeaturedCard extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback onTap;
 
-  const _FeaturedCard({required this.title, this.imageUrl, required this.onTap});
+  const _FeaturedCard(
+      {required this.title, this.imageUrl, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +248,9 @@ class _FeaturedCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12)
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -220,22 +263,39 @@ class _FeaturedCard extends StatelessWidget {
                 ? Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(imageUrl: imageUrl!, fit: BoxFit.cover, placeholder: (_, __) => _placeholder(), errorWidget: (_, __, ___) => _placeholder()),
+                      CachedNetworkImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => _placeholder(),
+                          errorWidget: (_, __, ___) => _placeholder()),
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.7)
+                            ],
                           ),
                         ),
                       ),
-                      Positioned(bottom: 12, left: 12, right: 12, child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                      Positioned(
+                          bottom: 12,
+                          left: 12,
+                          right: 12,
+                          child: Text(title,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold))),
                     ],
                   )
                 : Container(
                     color: AppTheme.primary.withOpacity(0.2),
-                    child: Center(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))),
+                    child: Center(
+                        child: Text(title,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold))),
                   ),
           ),
         ),
@@ -243,7 +303,11 @@ class _FeaturedCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(color: AppTheme.primary.withOpacity(0.2), child: Center(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))));
+  Widget _placeholder() => Container(
+      color: AppTheme.primary.withOpacity(0.2),
+      child: Center(
+          child: Text(title,
+              style: const TextStyle(fontWeight: FontWeight.bold))));
 }
 
 class _StoreDealCard extends StatelessWidget {
@@ -253,7 +317,12 @@ class _StoreDealCard extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback onViewDeal;
 
-  const _StoreDealCard({required this.name, required this.category, required this.rating, this.imageUrl, required this.onViewDeal});
+  const _StoreDealCard(
+      {required this.name,
+      required this.category,
+      required this.rating,
+      this.imageUrl,
+      required this.onViewDeal});
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +331,9 @@ class _StoreDealCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -281,14 +352,27 @@ class _StoreDealCard extends StatelessWidget {
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(width: 80, height: 80, color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 40)),
-                          errorWidget: (_, __, ___) => Container(width: 80, height: 80, color: AppTheme.primary.withOpacity(0.15), child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 40)),
+                          placeholder: (_, __) => Container(
+                              width: 80,
+                              height: 80,
+                              color: AppTheme.primary.withOpacity(0.15),
+                              child: const Icon(Icons.store_rounded,
+                                  color: AppTheme.primary, size: 40)),
+                          errorWidget: (_, __, ___) => Container(
+                              width: 80,
+                              height: 80,
+                              color: AppTheme.primary.withOpacity(0.15),
+                              child: const Icon(Icons.store_rounded,
+                                  color: AppTheme.primary, size: 40)),
                         )
                       : Container(
                           width: 80,
                           height: 80,
-                          decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 40),
+                          decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12)),
+                          child: const Icon(Icons.store_rounded,
+                              color: AppTheme.primary, size: 40),
                         ),
                 ),
                 const SizedBox(width: 16),
@@ -296,14 +380,21 @@ class _StoreDealCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(category, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      Text(name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(category,
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 13)),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade700),
+                          Icon(Icons.star_rounded,
+                              size: 16, color: Colors.amber.shade700),
                           const SizedBox(width: 4),
-                          Text('$rating', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text('$rating',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ],
@@ -311,7 +402,9 @@ class _StoreDealCard extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: onViewDeal,
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+                  style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10)),
                   child: const Text('View Deal'),
                 ),
               ],

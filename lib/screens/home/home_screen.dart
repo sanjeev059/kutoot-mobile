@@ -51,14 +51,20 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: (i) => setState(() => _currentIndex = i),
           backgroundColor: surface,
           selectedItemColor: AppTheme.primary,
-          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          unselectedItemColor:
+              Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.explore_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.card_giftcard_rounded), label: 'Rewards'),
-            BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Wallet'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.explore_rounded), label: 'Home'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.card_giftcard_rounded), label: 'Rewards'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_wallet_rounded),
+                label: 'Wallet'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded), label: 'Profile'),
           ],
         ),
       ),

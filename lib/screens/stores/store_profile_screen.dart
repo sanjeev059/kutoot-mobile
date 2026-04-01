@@ -4,6 +4,7 @@ import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 import '../payment/pay_bill_screen.dart';
+import '../plans/plans_screen.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? store;
@@ -203,10 +204,38 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Opening directions...')),
-                      ),
+                      onPressed: () {
+                        final storeName = store?['name'] ?? 'Store';
+                        final mapsUrl =
+                            'https://maps.google.com/?q=${Uri.encodeComponent('$storeName MG Road Bangalore')}';
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Directions'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('$storeName\nMG Road, Bangalore'),
+                                const SizedBox(height: 12),
+                                SelectableText(
+                                  mapsUrl,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1565C0),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('CLOSE'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.directions),
                       label: const Text('Directions'),
                     ),
@@ -355,8 +384,15 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'This coupon requires ${coupon.requiredPlan} plan or above.',
+            'This coupon requires ${coupon.requiredPlan} plan or above. Redirecting to plans...',
           ),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlansScreen(
+              cityName: widget.store?['city']?.toString() ?? 'Bangalore'),
         ),
       );
       return;
@@ -568,6 +604,14 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
                       setState(() => _appliedCode = c.code);
                       widget.onApply(c);
                     },
+                    onLocked: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PlansScreen(cityName: 'Bangalore'),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -584,12 +628,14 @@ class _CouponListCard extends StatelessWidget {
   final bool canApply;
   final bool applied;
   final VoidCallback onApply;
+  final VoidCallback? onLocked;
 
   const _CouponListCard({
     required this.coupon,
     required this.canApply,
     required this.applied,
     required this.onApply,
+    this.onLocked,
   });
 
   @override
@@ -673,7 +719,7 @@ class _CouponListCard extends StatelessWidget {
               color: const Color(0xFFE1BEC0).withValues(alpha: 0.4),
             ),
             GestureDetector(
-              onTap: (canApply && !applied) ? onApply : null,
+              onTap: applied ? null : (canApply ? onApply : onLocked),
               behavior: HitTestBehavior.opaque,
               child: SizedBox(
                 width: 90,

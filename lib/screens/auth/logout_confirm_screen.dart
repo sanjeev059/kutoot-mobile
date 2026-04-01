@@ -29,7 +29,8 @@ class LogoutConfirmScreen extends StatelessWidget {
                 color: Color(0xFFF5E5DB),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.logout, size: 54, color: AppTheme.primary),
+              child:
+                  const Icon(Icons.logout, size: 54, color: AppTheme.primary),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -49,7 +50,9 @@ class LogoutConfirmScreen extends StatelessWidget {
               height: 54,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  await context.read<AuthProvider>().logout();
+                  try {
+                    await context.read<AuthProvider>().logout();
+                  } catch (_) {}
                   if (!context.mounted) return;
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(

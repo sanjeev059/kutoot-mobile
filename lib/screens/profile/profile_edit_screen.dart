@@ -40,7 +40,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     });
     try {
       final res = await _api.getProfile();
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data =
+          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
       if (data != null && mounted) {
         _nameController.text = data['name']?.toString() ?? '';
         _emailController.text = data['email']?.toString() ?? '';
@@ -61,16 +62,20 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     try {
       await _api.updateProfile({
         'name': _nameController.text.trim(),
-        'email': _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+        'email': _emailController.text.trim().isEmpty
+            ? null
+            : _emailController.text.trim(),
       });
       if (mounted) {
         context.read<AuthProvider>().checkAuth();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Profile updated')));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: ${e.toString()}')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -84,17 +89,25 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Edit Profile', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Edit Profile',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
-            child: _saving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save'),
+            child: _saving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Save'),
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Form(
@@ -104,7 +117,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(labelText: 'Name'),
-                      validator: (v) => (v ?? '').trim().isEmpty ? 'Name is required' : null,
+                      validator: (v) =>
+                          (v ?? '').trim().isEmpty ? 'Name is required' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

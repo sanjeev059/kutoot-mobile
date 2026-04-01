@@ -78,6 +78,21 @@ class PlanPaymentScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'UPI Options',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _UpiOption(
+                        label: 'Google Pay',
+                        icon: Icons.account_balance_wallet),
+                    _UpiOption(label: 'PhonePe', icon: Icons.phone_android),
+                    _UpiOption(label: 'Paytm', icon: Icons.payment),
                   ],
                 ),
               ),
@@ -111,16 +126,9 @@ class PlanPaymentScreen extends StatelessWidget {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (_) => PaymentFailureScreen(
+                          planName: planName,
                           amount: amount,
-                          onRetry: () => Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => PlanPaymentScreen(
-                                planName: planName,
-                                amount: amount,
-                                cityName: cityName,
-                              ),
-                            ),
-                          ),
+                          cityName: cityName,
                         ),
                       ),
                     );
@@ -165,26 +173,33 @@ class PaymentSuccessScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 96,
               height: 96,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.primaryContainer]),
+                gradient: LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.primaryContainer]),
               ),
               child: const Icon(Icons.check, size: 56, color: Colors.white),
             ),
             const SizedBox(height: 18),
             const Text(
               'Payment Successful',
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               '₹$amount paid for $planName plan.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+              style:
+                  const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -210,13 +225,15 @@ class PaymentSuccessScreen extends StatelessWidget {
 }
 
 class PaymentFailureScreen extends StatelessWidget {
+  final String planName;
   final String amount;
-  final VoidCallback onRetry;
+  final String cityName;
 
   const PaymentFailureScreen({
     super.key,
+    required this.planName,
     required this.amount,
-    required this.onRetry,
+    required this.cityName,
   });
 
   @override
@@ -232,33 +249,50 @@ class PaymentFailureScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 96,
               height: 96,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.primaryContainer]),
+                gradient: LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.primaryContainer]),
               ),
               child: const Icon(Icons.close, size: 56, color: Colors.white),
             ),
             const SizedBox(height: 18),
             const Text(
               'Payment Declined',
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               'Transaction for ₹$amount failed. Please retry or use another method.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+              style:
+                  const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: onRetry,
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => PlanPaymentScreen(
+                        planName: planName,
+                        amount: amount,
+                        cityName: cityName,
+                      ),
+                    ),
+                  );
+                },
                 child: const Text('Retry Payment'),
               ),
             ),
@@ -273,6 +307,37 @@ class PaymentFailureScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _UpiOption extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  const _UpiOption({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5E5DB),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppTheme.textPrimary),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

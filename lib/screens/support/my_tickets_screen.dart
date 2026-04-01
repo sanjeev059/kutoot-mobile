@@ -9,15 +9,26 @@ class MyTicketsScreen extends StatefulWidget {
   State<MyTicketsScreen> createState() => _MyTicketsScreenState();
 }
 
-class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProviderStateMixin {
+class _MyTicketsScreenState extends State<MyTicketsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   final _activeTickets = [
-    {'id': 'TKT-001', 'subject': 'Payment not reflected', 'date': 'Oct 26, 2024', 'status': 'Open'},
+    {
+      'id': 'TKT-001',
+      'subject': 'Payment not reflected',
+      'date': 'Oct 26, 2024',
+      'status': 'Open'
+    },
   ];
 
   final _closedTickets = [
-    {'id': 'TKT-000', 'subject': 'Reward redemption issue', 'date': 'Oct 20, 2024', 'status': 'Resolved'},
+    {
+      'id': 'TKT-000',
+      'subject': 'Reward redemption issue',
+      'date': 'Oct 20, 2024',
+      'status': 'Resolved'
+    },
   ];
 
   @override
@@ -39,7 +50,9 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Tickets', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('My Tickets',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
@@ -57,7 +70,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubmitTicketScreen())),
+        onPressed: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const SubmitTicketScreen())),
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add_rounded),
       ),
@@ -86,28 +100,45 @@ class _TicketList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Text(t['id'] ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(t['id'] ?? '',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 12)),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: (t['status'] == 'Open' ? AppTheme.primary : Colors.grey).withOpacity(0.2),
+                      color: (t['status'] == 'Open'
+                              ? AppTheme.primary
+                              : Colors.grey)
+                          .withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(t['status'] ?? '', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t['status'] == 'Open' ? AppTheme.primary : Colors.grey)),
+                    child: Text(t['status'] ?? '',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: t['status'] == 'Open'
+                                ? AppTheme.primary
+                                : Colors.grey)),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(t['subject'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(t['date'] ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text(t['subject'] ?? '',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(t['date'] ?? '',
+                  style:
+                      TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             ],
           ),
         );

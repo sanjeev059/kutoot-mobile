@@ -32,7 +32,8 @@ class LocationPermissionScreen extends StatelessWidget {
                   color: AppTheme.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Icon(Icons.location_on_rounded, size: 64, color: AppTheme.primary),
+                child: const Icon(Icons.location_on_rounded,
+                    size: 64, color: AppTheme.primary),
               ),
               const SizedBox(height: 40),
               const Text(
@@ -71,7 +72,8 @@ class LocationPermissionScreen extends StatelessWidget {
                   onSkip?.call();
                   _goToSignUp(context);
                 },
-                child: Text('Skip for now', style: TextStyle(color: AppTheme.textSecondary)),
+                child: Text('Skip for now',
+                    style: TextStyle(color: AppTheme.textSecondary)),
               ),
             ],
           ),

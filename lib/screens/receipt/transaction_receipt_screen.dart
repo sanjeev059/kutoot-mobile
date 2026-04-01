@@ -11,7 +11,9 @@ class TransactionReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final amount = transaction['amount'] ?? 128.50;
     final date = transaction['created_at'] ?? 'Oct 26, 2023';
-    final storeName = transaction['store_name'] ?? transaction['description'] ?? 'Kutoot Store';
+    final storeName = transaction['store_name'] ??
+        transaction['description'] ??
+        'Kutoot Store';
     final stamps = transaction['stamps_earned'] ?? 12;
 
     return Scaffold(
@@ -19,7 +21,9 @@ class TransactionReceiptScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Transaction Receipt', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Transaction Receipt',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         actions: [
           Container(
@@ -29,7 +33,11 @@ class TransactionReceiptScreen extends StatelessWidget {
               color: Colors.green.withOpacity(0.15),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('Successful', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 14)),
+            child: const Text('Successful',
+                style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14)),
           ),
         ],
       ),
@@ -42,7 +50,10 @@ class TransactionReceiptScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16)],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.06), blurRadius: 16)
+                ],
               ),
               child: Column(
                 children: [
@@ -53,16 +64,26 @@ class TransactionReceiptScreen extends StatelessWidget {
                       color: AppTheme.primary.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 40),
+                    child: const Icon(Icons.store_rounded,
+                        color: AppTheme.primary, size: 40),
                   ),
                   const SizedBox(height: 16),
-                  Text(storeName.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(storeName.toString(),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('\$$amount', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                  Text('\$$amount',
+                      style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primary)),
                   const SizedBox(height: 24),
                   _ReceiptRow('Date', date.toString()),
                   _ReceiptRow('Time', '02:45 PM'),
-                  _ReceiptRow('Transaction ID', transaction['id']?.toString() ?? 'TXN${DateTime.now().millisecondsSinceEpoch}'),
+                  _ReceiptRow(
+                      'Transaction ID',
+                      transaction['id']?.toString() ??
+                          'TXN${DateTime.now().millisecondsSinceEpoch}'),
                   _ReceiptRow('Payment Method', 'Visa ending in 4242'),
                   const Divider(height: 24),
                   _ReceiptRow('Subtotal', '\$${amount}'),
@@ -76,7 +97,11 @@ class TransactionReceiptScreen extends StatelessWidget {
                       color: AppTheme.primary.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text('REWARDS EARNED: $stamps Loyalty Stamps', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 14)),
+                    child: Text('REWARDS EARNED: $stamps Loyalty Stamps',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primary,
+                            fontSize: 14)),
                   ),
                 ],
               ),
@@ -94,7 +119,8 @@ class TransactionReceiptScreen extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => _showComingSoon(context),
-                style: OutlinedButton.styleFrom(foregroundColor: AppTheme.textSecondary),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary),
                 child: const Text('Repeat Purchase'),
               ),
             ),
@@ -105,7 +131,8 @@ class TransactionReceiptScreen extends StatelessWidget {
   }
 
   void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 }
 
@@ -123,8 +150,13 @@ class _ReceiptRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.textSecondary, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(label,
+              style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );

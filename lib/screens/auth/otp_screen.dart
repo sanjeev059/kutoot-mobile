@@ -69,6 +69,7 @@ class _OtpScreenState extends State<OtpScreen> {
     if (value.length > 1) {
       _controllers[index].text = value.characters.last;
       _controllers[index].selection = const TextSelection.collapsed(offset: 1);
+      value = _controllers[index].text;
     }
     if (value.isNotEmpty && index < _focusNodes.length - 1) {
       _focusNodes[index + 1].requestFocus();
@@ -182,25 +183,25 @@ class _OtpScreenState extends State<OtpScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (i) {
                       return SizedBox(
-                        width: 48,
-                        height: 58,
+                        width: 50,
+                        height: 62,
                         child: TextField(
                           controller: _controllers[i],
                           focusNode: _focusNodes[i],
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
-                          maxLength: 1,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           onChanged: (value) => _onChange(i, value),
                           style: const TextStyle(
                             color: AppTheme.textPrimary,
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w800,
                           ),
                           decoration: InputDecoration(
-                            counterText: '',
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 16),
                             filled: true,
                             fillColor: const Color(0xFFF5E5DB),
                             border: OutlineInputBorder(

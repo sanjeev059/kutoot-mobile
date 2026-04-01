@@ -10,16 +10,31 @@ class MyRewardsScreen extends StatefulWidget {
   State<MyRewardsScreen> createState() => _MyRewardsScreenState();
 }
 
-class _MyRewardsScreenState extends State<MyRewardsScreen> with SingleTickerProviderStateMixin {
+class _MyRewardsScreenState extends State<MyRewardsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   final _activeRewards = [
-    {'name': 'Signature Roast Latte', 'points': 250, 'provider': 'Robert Premium Roasters', 'code': 'KUT-001'},
-    {'name': '20% Off', 'points': 100, 'provider': 'Urban Threads', 'code': 'KUT-002'},
+    {
+      'name': 'Signature Roast Latte',
+      'points': 250,
+      'provider': 'Robert Premium Roasters',
+      'code': 'KUT-001'
+    },
+    {
+      'name': '20% Off',
+      'points': 100,
+      'provider': 'Urban Threads',
+      'code': 'KUT-002'
+    },
   ];
 
   final _redeemedRewards = [
-    {'name': 'Artisan Pastry', 'provider': 'The Coffee Artisan', 'used': 'Oct 20, 2024'},
+    {
+      'name': 'Artisan Pastry',
+      'provider': 'The Coffee Artisan',
+      'used': 'Oct 20, 2024'
+    },
   ];
 
   @override
@@ -41,7 +56,9 @@ class _MyRewardsScreenState extends State<MyRewardsScreen> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Rewards', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('My Rewards',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
@@ -82,7 +99,9 @@ class _ActiveRewardsList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -95,20 +114,27 @@ class _ActiveRewardsList extends StatelessWidget {
                     color: AppTheme.primary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.card_giftcard_rounded, color: AppTheme.primary, size: 32),
+                  child: const Icon(Icons.card_giftcard_rounded,
+                      color: AppTheme.primary, size: 32),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(r['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text(r['provider'] ?? '', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      Text(r['name'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(r['provider'] ?? '',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RedemptionSuccessScreen(reward: r))),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => RedemptionSuccessScreen(reward: r))),
                   child: const Text('Redeem'),
                 ),
               ],
@@ -140,7 +166,9 @@ class _RedeemedRewardsList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+            ],
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(16),
@@ -153,12 +181,17 @@ class _RedeemedRewardsList extends StatelessWidget {
               ),
               child: const Icon(Icons.check_circle_rounded, color: Colors.grey),
             ),
-            title: Text(r['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('Used ${r['used'] ?? ''}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            title: Text(r['name'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text('Used ${r['used'] ?? ''}',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-              child: const Text('Used', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8)),
+              child: const Text('Used',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             ),
           ),
         );

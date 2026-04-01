@@ -17,7 +17,10 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
-        title: Text('Settings', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        title: Text('Settings',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold)),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: Consumer<SettingsProvider>(
@@ -52,7 +55,9 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const _SectionTitle('Security'),
-              _SettingsTile(title: 'Change Password', onTap: () => _showComingSoon(context)),
+              _SettingsTile(
+                  title: 'Change Password',
+                  onTap: () => _showComingSoon(context)),
               _SettingsTile(
                 title: 'Biometric Login',
                 trailing: Switch(
@@ -63,7 +68,10 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const _SectionTitle('Preferences'),
-              _SettingsTile(title: 'Language', subtitle: 'English', onTap: () => _showComingSoon(context)),
+              _SettingsTile(
+                  title: 'Language',
+                  subtitle: 'English',
+                  onTap: () => _showComingSoon(context)),
               _SettingsTile(
                 title: 'Dark Mode',
                 trailing: Switch(
@@ -74,16 +82,22 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const _SectionTitle('About'),
-              _SettingsTile(title: 'Privacy Policy', onTap: () => _showComingSoon(context)),
+              _SettingsTile(
+                  title: 'Privacy Policy',
+                  onTap: () => _showComingSoon(context)),
               _SettingsTile(
                 title: 'Terms of Service',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const TermsScreen())),
               ),
               const SizedBox(height: 24),
               const _SectionTitle('Account'),
               _SettingsTile(
                 title: 'Delete Account',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeleteAccountScreen())),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const DeleteAccountScreen())),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -91,13 +105,15 @@ class SettingsScreen extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () async {
                     final confirm = await showLogoutConfirmation(context);
-                    if (confirm == true && context.mounted) context.read<AuthProvider>().logout();
+                    if (confirm == true && context.mounted)
+                      context.read<AuthProvider>().logout();
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Log Out'),
                 ),
@@ -110,7 +126,8 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 }
 
@@ -141,7 +158,8 @@ class _SettingsTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
-  const _SettingsTile({required this.title, this.subtitle, this.trailing, this.onTap});
+  const _SettingsTile(
+      {required this.title, this.subtitle, this.trailing, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -153,12 +171,23 @@ class _SettingsTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        boxShadow: isDark
+            ? []
+            : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
       child: ListTile(
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: onSurface)),
-        subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(color: onSurface.withOpacity(0.7), fontSize: 13)) : null,
-        trailing: trailing ?? (onTap != null ? Icon(Icons.chevron_right_rounded, color: onSurface.withOpacity(0.7)) : null),
+        title: Text(title,
+            style: TextStyle(fontWeight: FontWeight.w500, color: onSurface)),
+        subtitle: subtitle != null
+            ? Text(subtitle!,
+                style:
+                    TextStyle(color: onSurface.withOpacity(0.7), fontSize: 13))
+            : null,
+        trailing: trailing ??
+            (onTap != null
+                ? Icon(Icons.chevron_right_rounded,
+                    color: onSurface.withOpacity(0.7))
+                : null),
         onTap: onTap,
       ),
     );

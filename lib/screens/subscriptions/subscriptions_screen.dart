@@ -24,9 +24,27 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   bool _promptingPrimaryCampaign = false;
 
   final _defaultPlans = [
-    {'name': 'Free', 'price': 0, 'monthly': 0, 'yearly': 0, 'recommended': false},
-    {'name': 'Pro', 'price': 9.99, 'monthly': 9.99, 'yearly': 99.99, 'recommended': true},
-    {'name': 'VIP', 'price': 19.99, 'monthly': 19.99, 'yearly': 199.99, 'recommended': false},
+    {
+      'name': 'Free',
+      'price': 0,
+      'monthly': 0,
+      'yearly': 0,
+      'recommended': false
+    },
+    {
+      'name': 'Pro',
+      'price': 9.99,
+      'monthly': 9.99,
+      'yearly': 99.99,
+      'recommended': true
+    },
+    {
+      'name': 'VIP',
+      'price': 19.99,
+      'monthly': 19.99,
+      'yearly': 199.99,
+      'recommended': false
+    },
   ];
 
   @override
@@ -60,7 +78,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       if (!mounted) return;
       final data = verifyRes.data is Map ? verifyRes.data as Map : {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message']?.toString() ?? 'Subscription upgraded successfully')),
+        SnackBar(
+            content: Text(data['message']?.toString() ??
+                'Subscription upgraded successfully')),
       );
       await _load();
       if (data['needs_campaign_selection'] == true) {
@@ -69,7 +89,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment verified but plan activation failed: $e')),
+        SnackBar(
+            content: Text('Payment verified but plan activation failed: $e')),
       );
     } finally {
       if (mounted) {
@@ -95,7 +116,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   void _onExternalWallet(ExternalWalletResponse response) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('External wallet selected: ${response.walletName ?? '-'}')),
+      SnackBar(
+          content:
+              Text('External wallet selected: ${response.walletName ?? '-'}')),
     );
   }
 
@@ -122,16 +145,23 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       List<Map<String, dynamic>> plans = [];
       if (data is Map && data['data'] != null) {
         plans = data['data'] is List
-            ? (data['data'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            ? (data['data'] as List)
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
             : [];
       } else if (data is List) {
-        plans = data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        plans = data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
       }
-      if (mounted) setState(() {
-        _plans = plans;
-        _current = current;
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _plans = plans;
+          _current = current;
+          _loading = false;
+        });
 
       if (mounted && current != null && current!['plan'] is Map) {
         final plan = current!['plan'] as Map;
@@ -140,10 +170,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         }
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -153,13 +184,17 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     try {
       await _api.recordSubscriptionConsent(planId);
       final res = await _api.upgradeSubscription(planId);
-      final payload = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+      final payload = res.data is Map
+          ? Map<String, dynamic>.from(res.data as Map)
+          : <String, dynamic>{};
       final needsPayment = payload['requires_payment'] == true;
 
       if (mounted) {
         if (needsPayment) {
           final order = payload['order'] is Map ? payload['order'] as Map : {};
-          final amountPaise = order['amount'] is int ? order['amount'] as int : int.tryParse('${order['amount']}') ?? 0;
+          final amountPaise = order['amount'] is int
+              ? order['amount'] as int
+              : int.tryParse('${order['amount']}') ?? 0;
           final amount = amountPaise > 0 ? amountPaise / 100 : 0.0;
           if (order['id'] != null && order['key'] != null && amountPaise > 0) {
             setState(() => _pendingPlanId = planId);
@@ -175,15 +210,21 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           } else {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => PaymentMethodsScreen(amount: amount > 0 ? amount : 0)),
+              MaterialPageRoute(
+                  builder: (_) =>
+                      PaymentMethodsScreen(amount: amount > 0 ? amount : 0)),
             );
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment order created, but checkout key/order is missing.')),
+              const SnackBar(
+                  content: Text(
+                      'Payment order created, but checkout key/order is missing.')),
             );
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(payload['message']?.toString() ?? 'Plan upgraded successfully')),
+            SnackBar(
+                content: Text(payload['message']?.toString() ??
+                    'Plan upgraded successfully')),
           );
           if (payload['needs_campaign_selection'] == true) {
             await _promptPrimaryCampaignSelection();
@@ -210,14 +251,18 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       final campaignsRes = await _api.getAvailableCampaigns();
       final data = campaignsRes.data is Map ? campaignsRes.data as Map : {};
       final campaigns = data['data'] is List
-          ? (data['data'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+          ? (data['data'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
           : <Map<String, dynamic>>[];
       if (!mounted || campaigns.isEmpty) return;
 
       if (campaigns.any((c) => c['is_primary'] == true)) return;
 
-      int? selectedId =
-          campaigns.first['id'] is int ? campaigns.first['id'] as int : int.tryParse('${campaigns.first['id']}');
+      int? selectedId = campaigns.first['id'] is int
+          ? campaigns.first['id'] as int
+          : int.tryParse('${campaigns.first['id']}');
 
       final picked = await showDialog<int>(
         context: context,
@@ -229,8 +274,12 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               value: selectedId,
               items: campaigns
                   .map((c) => DropdownMenuItem<int>(
-                        value: c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}'),
-                        child: Text(c['name']?.toString() ?? c['code']?.toString() ?? 'Campaign'),
+                        value: c['id'] is int
+                            ? c['id'] as int
+                            : int.tryParse('${c['id']}'),
+                        child: Text(c['name']?.toString() ??
+                            c['code']?.toString() ??
+                            'Campaign'),
                       ))
                   .toList(),
               onChanged: (v) => setLocal(() => selectedId = v),
@@ -242,7 +291,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               child: const Text('Later'),
             ),
             ElevatedButton(
-              onPressed: selectedId == null ? null : () => Navigator.pop(context, selectedId),
+              onPressed: selectedId == null
+                  ? null
+                  : () => Navigator.pop(context, selectedId),
               child: const Text('Save'),
             ),
           ],
@@ -270,11 +321,14 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Subscription', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Subscription',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -282,7 +336,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ElevatedButton(
+                          onPressed: _load, child: const Text('Retry')),
                     ],
                   ),
                 )
@@ -304,8 +359,16 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                _ToggleChip(label: 'Monthly', selected: !_yearly, onTap: () => setState(() => _yearly = false)),
-                                _ToggleChip(label: 'Yearly', selected: _yearly, onTap: () => setState(() => _yearly = true)),
+                                _ToggleChip(
+                                    label: 'Monthly',
+                                    selected: !_yearly,
+                                    onTap: () =>
+                                        setState(() => _yearly = false)),
+                                _ToggleChip(
+                                    label: 'Yearly',
+                                    selected: _yearly,
+                                    onTap: () =>
+                                        setState(() => _yearly = true)),
                               ],
                             ),
                           ),
@@ -320,12 +383,15 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.card_membership, color: AppTheme.primary, size: 32),
+                                const Icon(Icons.card_membership,
+                                    color: AppTheme.primary, size: 32),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     'Current: ${_current!['plan']?['name'] ?? _current!['plan_name'] ?? 'Active'}',
-                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16),
                                   ),
                                 ),
                               ],
@@ -333,21 +399,34 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                           ),
                           const SizedBox(height: 24),
                         ],
-                        const Text('Available Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text('Available Plans',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         ...(_plans.isEmpty ? _defaultPlans : _plans).map((p) {
                           final plan = p is Map ? p : <String, dynamic>{};
                           final id = plan['id'];
                           final name = plan['name'] ?? 'Plan';
-                          final price = _yearly ? (plan['yearly'] ?? plan['price'] ?? plan['amount']) : (plan['monthly'] ?? plan['price'] ?? plan['amount']);
+                          final price = _yearly
+                              ? (plan['yearly'] ??
+                                  plan['price'] ??
+                                  plan['amount'])
+                              : (plan['monthly'] ??
+                                  plan['price'] ??
+                                  plan['amount']);
                           final desc = plan['description'] ?? '';
-                          final recommended = plan['recommended'] == true || plan['best_value'] == true;
+                          final recommended = plan['recommended'] == true ||
+                              plan['best_value'] == true;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 12)
+                              ],
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -356,26 +435,58 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                      Text(name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18)),
                                       if (recommended) ...[
                                         const SizedBox(width: 8),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                                          child: const Text('Recommended', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                              color: AppTheme.primary
+                                                  .withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                          child: const Text('Recommended',
+                                              style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600)),
                                         ),
                                       ],
                                     ],
                                   ),
-                                  if (desc.toString().isNotEmpty) Text(desc.toString(), style: const TextStyle(color: AppTheme.textSecondary)),
-                                  if (price != null) Text('₹$price', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                                  if (desc.toString().isNotEmpty)
+                                    Text(desc.toString(),
+                                        style: const TextStyle(
+                                            color: AppTheme.textSecondary)),
+                                  if (price != null)
+                                    Text('₹$price',
+                                        style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primary)),
                                   const SizedBox(height: 12),
                                   if (id != null)
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
-                                        onPressed: _upgrading ? null : () => _upgrade(id is int ? id : int.tryParse(id.toString()) ?? 0),
-                                        child: _upgrading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Upgrade'),
+                                        onPressed: _upgrading
+                                            ? null
+                                            : () => _upgrade(id is int
+                                                ? id
+                                                : int.tryParse(id.toString()) ??
+                                                    0),
+                                        child: _upgrading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white))
+                                            : const Text('Upgrade'),
                                       ),
                                     ),
                                 ],
@@ -383,13 +494,31 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                             ),
                           );
                         }),
-                        if (_plans.isEmpty && _defaultPlans.isEmpty) const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No plans available'))),
+                        if (_plans.isEmpty && _defaultPlans.isEmpty)
+                          const Center(
+                              child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Text('No plans available'))),
                         const SizedBox(height: 24),
-                        const Text('Compare Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text('Compare Plans',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
-                        _ComparisonRow(feature: 'Reward Limit', free: '5/mo', pro: 'Unlimited', vip: 'Unlimited'),
-                        _ComparisonRow(feature: 'Customization', free: '—', pro: '✓', vip: '✓'),
-                        _ComparisonRow(feature: 'Exclusive Items', free: '—', pro: '—', vip: '✓'),
+                        _ComparisonRow(
+                            feature: 'Reward Limit',
+                            free: '5/mo',
+                            pro: 'Unlimited',
+                            vip: 'Unlimited'),
+                        _ComparisonRow(
+                            feature: 'Customization',
+                            free: '—',
+                            pro: '✓',
+                            vip: '✓'),
+                        _ComparisonRow(
+                            feature: 'Exclusive Items',
+                            free: '—',
+                            pro: '—',
+                            vip: '✓'),
                       ],
                     ),
                   ),
@@ -403,7 +532,8 @@ class _ToggleChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ToggleChip({required this.label, required this.selected, required this.onTap});
+  const _ToggleChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -415,9 +545,13 @@ class _ToggleChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: selected ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)] : null,
+          boxShadow: selected
+              ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)]
+              : null,
         ),
-        child: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+        child: Text(label,
+            style: TextStyle(
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
       ),
     );
   }
@@ -429,7 +563,11 @@ class _ComparisonRow extends StatelessWidget {
   final String pro;
   final String vip;
 
-  const _ComparisonRow({required this.feature, required this.free, required this.pro, required this.vip});
+  const _ComparisonRow(
+      {required this.feature,
+      required this.free,
+      required this.pro,
+      required this.vip});
 
   @override
   Widget build(BuildContext context) {
@@ -438,13 +576,21 @@ class _ComparisonRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)
+        ],
       ),
       margin: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text(feature, style: const TextStyle(fontWeight: FontWeight.w500))),
-          Expanded(child: Text(free, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary))),
+          SizedBox(
+              width: 100,
+              child: Text(feature,
+                  style: const TextStyle(fontWeight: FontWeight.w500))),
+          Expanded(
+              child: Text(free,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.textSecondary))),
           Expanded(child: Text(pro, textAlign: TextAlign.center)),
           Expanded(child: Text(vip, textAlign: TextAlign.center)),
         ],

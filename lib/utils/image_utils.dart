@@ -14,7 +14,10 @@ class ImageUtils {
   /// Extract image URL from various API response shapes.
   static String? fromMap(Map<String, dynamic>? map) {
     if (map == null) return null;
-    final url = map['image_url'] ?? map['thumb_url'] ?? map['url'] ?? map['preview_url'];
+    final url = map['image_url'] ??
+        map['thumb_url'] ??
+        map['url'] ??
+        map['preview_url'];
     if (url != null) return resolve(url);
     final media = map['media'];
     if (media is List && media.isNotEmpty) {
@@ -30,14 +33,17 @@ class ImageUtils {
   static String? fromBanner(dynamic b) {
     if (b == null) return null;
     if (b is Map) {
-      final url = b['image_url'] ?? b['thumb_url'] ?? b['url'] ?? b['preview_url'];
+      final url =
+          b['image_url'] ?? b['thumb_url'] ?? b['url'] ?? b['preview_url'];
       if (url != null) return resolve(url);
       final media = b['media'];
       if (media is List && media.isNotEmpty && media[0] is Map) {
         final m = media[0] as Map;
         return resolve(m['url'] ?? m['thumb']);
       }
-      return fromMap(b['sponsor_image'] is Map ? Map<String, dynamic>.from(b['sponsor_image'] as Map) : null);
+      return fromMap(b['sponsor_image'] is Map
+          ? Map<String, dynamic>.from(b['sponsor_image'] as Map)
+          : null);
     }
     return null;
   }

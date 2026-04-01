@@ -117,7 +117,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   }
 
   void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -145,11 +146,13 @@ class _CampaignHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.secondary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.20)),
+              border:
+                  Border.all(color: AppTheme.secondary.withValues(alpha: 0.20)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.location_on, size: 15, color: AppTheme.secondary),
+                const Icon(Icons.location_on,
+                    size: 15, color: AppTheme.secondary),
                 const SizedBox(width: 2),
                 Text(
                   '$cityName ▾',
@@ -437,14 +440,23 @@ class _CampaignData {
 }
 
 const List<_CampaignData> _liveCampaigns = [
-  _CampaignData(id: 1, title: 'LUXURY VILLA', stamps: 12, progress: 82, live: true),
-  _CampaignData(id: 2, title: 'BMW M4 COMPETITION', stamps: 5, progress: 45, live: true),
-  _CampaignData(id: 3, title: '1KG GOLD BAR', stamps: 1, progress: 94, live: true),
+  _CampaignData(
+      id: 1, title: 'LUXURY VILLA', stamps: 12, progress: 82, live: true),
+  _CampaignData(
+      id: 2, title: 'BMW M4 COMPETITION', stamps: 5, progress: 45, live: true),
+  _CampaignData(
+      id: 3, title: '1KG GOLD BAR', stamps: 1, progress: 94, live: true),
 ];
 
 const List<_CampaignData> _announcedCampaigns = [
-  _CampaignData(id: 4, title: 'MALDIVES TRIP', stamps: 0, progress: 0, live: false),
-  _CampaignData(id: 5, title: 'IPHONE PRO MAX', stamps: 0, progress: 0, live: false),
   _CampaignData(
-      id: 6, title: 'PREMIUM HOME MAKEOVER', stamps: 0, progress: 0, live: false),
+      id: 4, title: 'MALDIVES TRIP', stamps: 0, progress: 0, live: false),
+  _CampaignData(
+      id: 5, title: 'IPHONE PRO MAX', stamps: 0, progress: 0, live: false),
+  _CampaignData(
+      id: 6,
+      title: 'PREMIUM HOME MAKEOVER',
+      stamps: 0,
+      progress: 0,
+      live: false),
 ];

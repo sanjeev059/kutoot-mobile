@@ -9,7 +9,8 @@ class StampHistoryScreen extends StatefulWidget {
   State<StampHistoryScreen> createState() => _StampHistoryScreenState();
 }
 
-class _StampHistoryScreenState extends State<StampHistoryScreen> with SingleTickerProviderStateMixin {
+class _StampHistoryScreenState extends State<StampHistoryScreen>
+    with SingleTickerProviderStateMixin {
   final _api = KutootApi();
   late TabController _tabController;
   List<dynamic> _stamps = [];
@@ -50,7 +51,9 @@ class _StampHistoryScreenState extends State<StampHistoryScreen> with SingleTick
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Stamp History', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('Stamp History',
+            style: TextStyle(
+                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
@@ -70,29 +73,56 @@ class _StampHistoryScreenState extends State<StampHistoryScreen> with SingleTick
             margin: const EdgeInsets.all(20),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)]),
+              gradient: LinearGradient(colors: [
+                AppTheme.primary,
+                AppTheme.primary.withOpacity(0.8)
+              ]),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 16)],
+              boxShadow: [
+                BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.3), blurRadius: 16)
+              ],
             ),
             child: Column(
               children: [
-                const Text('TOTAL BALANCE', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                const Text('TOTAL BALANCE',
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('$_totalBalance Stamps', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                Text('$_totalBalance Stamps',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold)),
               ],
             ),
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary))
                 : _stamps.isEmpty
                     ? _buildPlaceholderList()
                     : TabBarView(
                         controller: _tabController,
                         children: [
                           _StampList(items: _stamps),
-                          _StampList(items: _stamps.where((s) => (s is Map ? s['type'] ?? 'earned' : 'earned') == 'earned').toList()),
-                          _StampList(items: _stamps.where((s) => (s is Map ? s['type'] ?? '' : '') == 'redeemed').toList()),
+                          _StampList(
+                              items: _stamps
+                                  .where((s) =>
+                                      (s is Map
+                                          ? s['type'] ?? 'earned'
+                                          : 'earned') ==
+                                      'earned')
+                                  .toList()),
+                          _StampList(
+                              items: _stamps
+                                  .where((s) =>
+                                      (s is Map ? s['type'] ?? '' : '') ==
+                                      'redeemed')
+                                  .toList()),
                         ],
                       ),
           ),
@@ -132,7 +162,8 @@ class _StampList extends StatelessWidget {
         itemCount: placeholderItems!.length,
         itemBuilder: (context, i) {
           final p = placeholderItems![i];
-          return _StampActivityTile(storeName: p.$1, date: p.$2, amount: p.$3, stamps: p.$4);
+          return _StampActivityTile(
+              storeName: p.$1, date: p.$2, amount: p.$3, stamps: p.$4);
         },
       );
     }
@@ -148,7 +179,11 @@ class _StampList extends StatelessWidget {
         final name = campaign['name'] ?? s['campaign_name'] ?? 'Store';
         final date = s['created_at'] ?? s['date'] ?? '';
         final progress = s['progress'] ?? s['current_count'] ?? 0;
-        return _StampActivityTile(storeName: name, date: date.toString(), amount: '', stamps: progress is int ? progress : 0);
+        return _StampActivityTile(
+            storeName: name,
+            date: date.toString(),
+            amount: '',
+            stamps: progress is int ? progress : 0);
       },
     );
   }
@@ -160,7 +195,11 @@ class _StampActivityTile extends StatelessWidget {
   final String amount;
   final int stamps;
 
-  const _StampActivityTile({required this.storeName, required this.date, required this.amount, required this.stamps});
+  const _StampActivityTile(
+      {required this.storeName,
+      required this.date,
+      required this.amount,
+      required this.stamps});
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +209,9 @@ class _StampActivityTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
+        ],
       ),
       child: Row(
         children: [
@@ -188,9 +229,15 @@ class _StampActivityTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(storeName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(date, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                if (amount.isNotEmpty) Text(amount, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                Text(storeName,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(date,
+                    style:
+                        TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                if (amount.isNotEmpty)
+                  Text(amount,
+                      style: TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -200,7 +247,9 @@ class _StampActivityTile extends StatelessWidget {
               color: Colors.green.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('+$stamps', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            child: Text('+$stamps',
+                style: const TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

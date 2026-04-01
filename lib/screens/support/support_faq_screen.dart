@@ -11,6 +11,14 @@ class SupportFaqScreen extends StatefulWidget {
 
 class _SupportFaqScreenState extends State<SupportFaqScreen> {
   int? _activeCategoryIndex = 1;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   static const _categories = [
     _Category(icon: Icons.payments, label: 'Payments'),
@@ -20,36 +28,105 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
     _Category(icon: Icons.account_circle, label: 'Account'),
   ];
 
-  static const _faqs = [
-    _FaqItem(
-      q: 'How do I earn stamps?',
-      a: 'Earning stamps is easy! Simply scan your unique Kutoot QR code at any '
-          'participating merchant whenever you make a purchase. Each qualified '
-          'purchase adds one stamp to your digital card. Once you collect 10 '
-          'stamps, your reward is automatically unlocked.',
-    ),
-    _FaqItem(
-      q: 'When is the next lucky draw?',
-      a: 'Our Grand Kinetic Lucky Draw happens every last Friday of the month! '
-          'You can enter by redeeming your accumulated rewards points for draw '
-          "tickets in the 'Rewards' tab. Make sure your profile is fully verified "
-          'to participate.',
-    ),
-    _FaqItem(
-      q: 'How to upgrade my plan?',
-      a: "To upgrade your membership plan, navigate to the Profile section and "
-          "select 'Member Status'. There you can compare our Premium and Elite "
-          'tiers and choose the one that fits your lifestyle. Payments are '
-          'processed securely via your saved method.',
-    ),
-    _FaqItem(
-      q: "What happens if a merchant doesn't scan?",
-      a: "If you encounter a scanning issue, please ask the merchant for a "
-          "physical receipt and use the 'Report Missing Stamp' feature in the "
-          'Support menu. Upload a photo of your receipt and our team will credit '
-          'your account within 24 hours.',
-    ),
-  ];
+  static const Map<int, List<_FaqItem>> _categoryFaqs = {
+    0: [
+      _FaqItem(
+        q: 'How do I make a payment?',
+        a: 'You can pay at any participating store by scanning your Kutoot QR code. Enter the bill amount and choose your preferred payment method to complete the transaction.',
+      ),
+      _FaqItem(
+        q: 'What payment methods are supported?',
+        a: 'We support UPI (Google Pay, PhonePe), credit/debit cards, and net banking through our secure payment gateway powered by Razorpay.',
+      ),
+      _FaqItem(
+        q: 'My payment failed. What should I do?',
+        a: 'If your payment failed, the amount will be refunded within 3-5 business days. You can retry the payment or contact support for assistance.',
+      ),
+    ],
+    1: [
+      _FaqItem(
+        q: 'How do I earn stamps?',
+        a: 'Earning stamps is easy! Simply scan your unique Kutoot QR code at any '
+            'participating merchant whenever you make a purchase. Each qualified '
+            'purchase adds one stamp to your digital card. Once you collect 10 '
+            'stamps, your reward is automatically unlocked.',
+      ),
+      _FaqItem(
+        q: 'When is the next lucky draw?',
+        a: 'Our Grand Kinetic Lucky Draw happens every last Friday of the month! '
+            'You can enter by redeeming your accumulated rewards points for draw '
+            "tickets in the 'Rewards' tab. Make sure your profile is fully verified "
+            'to participate.',
+      ),
+      _FaqItem(
+        q: 'How to upgrade my plan?',
+        a: "To upgrade your membership plan, navigate to the Profile section and "
+            "select 'Member Status'. There you can compare our Premium and Elite "
+            'tiers and choose the one that fits your lifestyle. Payments are '
+            'processed securely via your saved method.',
+      ),
+      _FaqItem(
+        q: "What happens if a merchant doesn't scan?",
+        a: "If you encounter a scanning issue, please ask the merchant for a "
+            "physical receipt and use the 'Report Missing Stamp' feature in the "
+            'Support menu. Upload a photo of your receipt and our team will credit '
+            'your account within 24 hours.',
+      ),
+    ],
+    2: [
+      _FaqItem(
+        q: 'How do I earn stamps?',
+        a: 'Earning stamps is easy! Simply scan your Kutoot QR code at any participating merchant. Each qualified purchase adds stamps based on your plan tier.',
+      ),
+      _FaqItem(
+        q: 'How many stamps do I need to enter a campaign?',
+        a: 'Each campaign has different stamp requirements. Check the campaign details in the Rewards section to see the required stamps for each prize.',
+      ),
+      _FaqItem(
+        q: 'Do my stamps expire?',
+        a: 'Stamps are valid for the duration of your active plan. Once your plan expires, unused stamps will be carried forward for 30 days.',
+      ),
+    ],
+    3: [
+      _FaqItem(
+        q: 'How to upgrade my plan?',
+        a: 'Navigate to the Plans section from the bottom navigation. Browse available plans and tap to select one that suits your needs. Complete payment to activate instantly.',
+      ),
+      _FaqItem(
+        q: 'Can I downgrade my plan?',
+        a: 'Plan downgrades are not available during an active subscription period. Once your current plan expires, you can choose any plan including a lower tier.',
+      ),
+      _FaqItem(
+        q: 'What happens when my plan expires?',
+        a: 'When your plan expires, you will revert to the Free tier. Your stamps and transaction history are preserved. You can upgrade again at any time.',
+      ),
+    ],
+    4: [
+      _FaqItem(
+        q: 'How do I edit my profile?',
+        a: 'Go to Account section and tap on your profile card. You can update your name, email, and profile picture from the edit screen.',
+      ),
+      _FaqItem(
+        q: 'How to delete my account?',
+        a: 'Navigate to Account > Settings > Delete Account. Please note this action is irreversible and all your data, stamps, and rewards will be permanently removed.',
+      ),
+      _FaqItem(
+        q: 'How do I change my phone number?',
+        a: 'For security reasons, changing your registered phone number requires verification. Please contact support through the Get Support button.',
+      ),
+    ],
+  };
+
+  List<_FaqItem> get _activeFaqs {
+    final faqs = _categoryFaqs[_activeCategoryIndex ?? 1] ?? _categoryFaqs[1]!;
+    if (_searchQuery.isEmpty) return faqs;
+    final query = _searchQuery.toLowerCase();
+    return faqs
+        .where((f) =>
+            f.q.toLowerCase().contains(query) ||
+            f.a.toLowerCase().contains(query))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,25 +220,30 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
         ),
         const SizedBox(height: 20),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
             color: AppTheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(999),
           ),
-          child: Row(
-            children: [
-              Icon(Icons.search,
-                  color: AppTheme.outline.withValues(alpha: 0.6), size: 22),
-              const SizedBox(width: 12),
-              Text(
-                'Search for answers...',
-                style: TextStyle(
-                  color: AppTheme.outline.withValues(alpha: 0.6),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search for answers...',
+              hintStyle: TextStyle(
+                color: AppTheme.outline.withValues(alpha: 0.6),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
-            ],
+              prefixIcon: Icon(Icons.search,
+                  color: AppTheme.outline.withValues(alpha: 0.6), size: 22),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            ),
           ),
         ),
       ],
@@ -172,26 +254,13 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Browse Categories',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-              ),
-            ),
-            Text(
-              'View All',
-              style: TextStyle(
-                color: AppTheme.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
+        const Text(
+          'Browse Categories',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -267,6 +336,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
   }
 
   Widget _buildFaqList() {
+    final faqs = _activeFaqs;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -280,7 +350,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
         ),
         const SizedBox(height: 16),
         ...List.generate(
-            _faqs.length, (i) => _FaqTile(q: _faqs[i].q, a: _faqs[i].a)),
+            faqs.length, (i) => _FaqTile(q: faqs[i].q, a: faqs[i].a)),
       ],
     );
   }
@@ -326,7 +396,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Our culinary support team is available 24/7 to assist with any issues regarding your experience.',
+                'Our support team is available 24/7 to assist with any issues regarding your experience.',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
@@ -424,6 +494,7 @@ class _FaqTileState extends State<_FaqTile>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),

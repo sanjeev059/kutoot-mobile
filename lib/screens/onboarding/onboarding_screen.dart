@@ -93,7 +93,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: _onSkip,
-                  child: Text('Skip', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                  child: Text('Skip',
+                      style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600)),
                 ),
               ),
             Expanded(
@@ -115,7 +118,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             color: AppTheme.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(24),
                           ),
-                          child: Icon(p.icon, size: 64, color: AppTheme.primary),
+                          child:
+                              Icon(p.icon, size: 64, color: AppTheme.primary),
                         ),
                         const SizedBox(height: 40),
                         Text(
@@ -155,7 +159,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         width: _currentPage == i ? 24 : 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _currentPage == i ? AppTheme.primary : AppTheme.textSecondary.withOpacity(0.3),
+                          color: _currentPage == i
+                              ? AppTheme.primary
+                              : AppTheme.textSecondary.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
