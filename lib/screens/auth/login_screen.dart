@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'need_help_screen.dart';
 import 'otp_screen.dart';
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBqkzOJPr5UReWxGrO2BEWCe3xlo3mvrfsq8iHPYHw7dXg5Y9p0plNjKz3nWvVj5wSOHMyow74dzd_wBD1_539E6nH0zloIxyI8HQb4brpaAzFHpuvpw8I5qM-itOTIIdPnctJM12I0tHkwDb50QN1skba1AwF4S4df5xUaQVBdSYmexjdZU-RhhIOjj-kTSeSqPkCZMW4h4-EfGc9QASpdoCk0nsW8ayqpcoJ73qisTL5Go1ClurvKZo72UidlkwqVLP16O72kZQ';
 
   final TextEditingController _mobileController = TextEditingController();
+  bool _sending = false;
 
   String get _digits => _mobileController.text.replaceAll(RegExp(r'\D'), '');
   bool get _valid => _digits.length == 10;
@@ -29,11 +32,23 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _continue() {
-    if (!_valid) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: _digits)),
-    );
+  Future<void> _continue() async {
+    if (!_valid || _sending) return;
+    setState(() => _sending = true);
+    final auth = context.read<AuthProvider>();
+    final (success, debugOtp) = await auth.sendOtp(_digits);
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (success) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: _digits, debugOtp: debugOtp)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Failed to send OTP')),
+      );
+      auth.clearError();
+    }
   }
 
   @override
@@ -188,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     InkWell(
-                      onTap: _valid ? _continue : null,
+                      onTap: _valid && !_sending ? _continue : null,
                       borderRadius: BorderRadius.circular(999),
                       child: Container(
                         height: 58,
@@ -198,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: _valid
+                            colors: _valid && !_sending
                                 ? const [
                                     AppTheme.primary,
                                     AppTheme.primaryContainer
@@ -206,19 +221,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const [Color(0xFFA97A86), Color(0xFFB58A94)],
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Log In',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w800,
+                            if (_sending)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            else ...[
+                              const Text(
+                                'Log In',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, color: Colors.white),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.arrow_forward, color: Colors.white),
+                            ],
                           ],
                         ),
                       ),

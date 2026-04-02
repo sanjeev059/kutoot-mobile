@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'submit_ticket_screen.dart';
 
@@ -11,19 +12,42 @@ class MyTicketsScreen extends StatefulWidget {
 
 class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  final _activeTickets = [
-    {'id': 'TKT-001', 'subject': 'Payment not reflected', 'date': 'Oct 26, 2024', 'status': 'Open'},
-  ];
-
-  final _closedTickets = [
-    {'id': 'TKT-000', 'subject': 'Reward redemption issue', 'date': 'Oct 20, 2024', 'status': 'Resolved'},
-  ];
+  final _api = KutootApi();
+  List<Map<String, dynamic>> _activeTickets = [];
+  List<Map<String, dynamic>> _closedTickets = [];
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadTickets();
+  }
+
+  Future<void> _loadTickets() async {
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait([
+        _api.getSupportTickets(params: {'status': 'open'}).then<dynamic>((r) => r).catchError((_) => null),
+        _api.getSupportTickets(params: {'status': 'resolved'}).then<dynamic>((r) => r).catchError((_) => null),
+      ]);
+      if (mounted) {
+        _activeTickets = _parseTickets(results[0]);
+        _closedTickets = _parseTickets(results[1]);
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> _parseTickets(dynamic res) {
+    if (res == null) return [];
+    final data = res.data;
+    if (data is Map && data['data'] is List) {
+      return (data['data'] as List).map((t) => t is Map ? Map<String, dynamic>.from(t) : <String, dynamic>{}).toList();
+    }
+    return [];
   }
 
   @override
@@ -49,13 +73,18 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
           tabs: const [Tab(text: 'Active'), Tab(text: 'Closed')],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _TicketList(tickets: _activeTickets),
-          _TicketList(tickets: _closedTickets),
-        ],
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : RefreshIndicator(
+              onRefresh: _loadTickets,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _TicketList(tickets: _activeTickets),
+                  _TicketList(tickets: _closedTickets),
+                ],
+              ),
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubmitTicketScreen())),
         backgroundColor: AppTheme.primary,

@@ -1,14 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 
-class ReferEarnScreen extends StatelessWidget {
+class ReferEarnScreen extends StatefulWidget {
   const ReferEarnScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const referralCode = 'KUT00750';
+  State<ReferEarnScreen> createState() => _ReferEarnScreenState();
+}
 
+class _ReferEarnScreenState extends State<ReferEarnScreen> {
+  final _api = KutootApi();
+  String _referralCode = '';
+  int _rewardPoints = 0;
+  int _totalReferrals = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReferral();
+  }
+
+  Future<void> _loadReferral() async {
+    try {
+      final res = await _api.getReferralInfo();
+      if (mounted && res.data is Map) {
+        final d = (res.data as Map)['data'] ?? res.data;
+        if (d is Map) {
+          setState(() {
+            _referralCode = (d['referral_code'] ?? '').toString();
+            _rewardPoints = d['reward_points'] is int ? d['reward_points'] : int.tryParse(d['reward_points'].toString()) ?? 0;
+            _totalReferrals = d['total_referrals'] is int ? d['total_referrals'] : int.tryParse(d['total_referrals'].toString()) ?? 0;
+            _loading = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -17,73 +52,113 @@ class ReferEarnScreen extends StatelessWidget {
         title: const Text('Refer & Earn', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.15),
-                shape: BoxShape.circle,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : RefreshIndicator(
+              color: AppTheme.primary,
+              onRefresh: _loadReferral,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.people_rounded, size: 64, color: AppTheme.primary),
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Invite Friends, Earn Rewards',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Share your referral code with friends. When they sign up and make their first purchase, you both earn bonus stamps!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: AppTheme.textSecondary, height: 1.5),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _StatCard(label: 'Reward Points', value: '$_rewardPoints'),
+                        _StatCard(label: 'Total Referrals', value: '$_totalReferrals'),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.primary.withOpacity(0.5), width: 2),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_referralCode, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                          const SizedBox(width: 16),
+                          IconButton(
+                            icon: const Icon(Icons.copy_rounded),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _referralCode));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share sheet coming soon'))),
+                        icon: const Icon(Icons.share_rounded),
+                        label: const Text('Share with Friends'),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    const Text('How it works', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    _StepRow(step: 1, text: 'Share your unique code with friends'),
+                    _StepRow(step: 2, text: 'They sign up and make their first purchase'),
+                    _StepRow(step: 3, text: 'You both earn bonus stamps!'),
+                  ],
+                ),
               ),
-              child: const Icon(Icons.people_rounded, size: 64, color: AppTheme.primary),
             ),
-            const SizedBox(height: 32),
-            const Text(
-              'Invite Friends, Earn Rewards',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Share your referral code with friends. When they sign up and make their first purchase, you both earn bonus stamps!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary, height: 1.5),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primary.withOpacity(0.5), width: 2, style: BorderStyle.solid),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(referralCode, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4)),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded),
-                    onPressed: () {
-                      Clipboard.setData(const ClipboardData(text: referralCode));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share sheet coming soon'))),
-                icon: const Icon(Icons.share_rounded),
-                label: const Text('Share with Friends'),
-              ),
-            ),
-            const SizedBox(height: 40),
-            const Text('How it works', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            _StepRow(step: 1, text: 'Share your unique code with friends'),
-            _StepRow(step: 2, text: 'They sign up and make their first purchase'),
-            _StepRow(step: 3, text: 'You both earn bonus stamps!'),
-          ],
-        ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatCard({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+      ),
+      child: Column(
+        children: [
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+        ],
       ),
     );
   }
@@ -92,7 +167,6 @@ class ReferEarnScreen extends StatelessWidget {
 class _StepRow extends StatelessWidget {
   final int step;
   final String text;
-
   const _StepRow({required this.step, required this.text});
 
   @override
@@ -105,10 +179,7 @@ class _StepRow extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
             child: Center(child: Text('$step', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
           ),
           const SizedBox(width: 16),

@@ -1,9 +1,53 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'submit_ticket_screen.dart';
 
-class SupportTicketHistoryScreen extends StatelessWidget {
+class SupportTicketHistoryScreen extends StatefulWidget {
   const SupportTicketHistoryScreen({super.key});
+
+  @override
+  State<SupportTicketHistoryScreen> createState() => _SupportTicketHistoryScreenState();
+}
+
+class _SupportTicketHistoryScreenState extends State<SupportTicketHistoryScreen> {
+  final _api = KutootApi();
+  List<Map<String, dynamic>> _tickets = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTickets();
+  }
+
+  Future<void> _loadTickets() async {
+    try {
+      final res = await _api.getSupportTickets();
+      if (mounted && res.data is Map) {
+        final d = (res.data as Map)['data'];
+        setState(() {
+          _tickets = (d is List ? d : []).map((t) => Map<String, dynamic>.from(t is Map ? t : {})).toList();
+          _loading = false;
+        });
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+      case 'closed':
+        return const Color(0xFF2E7D32);
+      case 'pending':
+      case 'open':
+        return const Color(0xFFBA1A1A);
+      default:
+        return const Color(0xFFEA6B1E);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,63 +59,58 @@ class SupportTicketHistoryScreen extends StatelessWidget {
         foregroundColor: AppTheme.textPrimary,
         title: const Text('Support Tickets', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-        children: [
-          _TicketCard(
-            id: '#TKT-10293',
-            status: 'Under Review',
-            statusColor: const Color(0xFFEA6B1E),
-            date: '24 Oct 2026, 02:30 PM',
-            message: 'Reward points were not credited after payment. Receipt attached.',
-          ),
-          _TicketCard(
-            id: '#TKT-09844',
-            status: 'Resolved',
-            statusColor: const Color(0xFF2E7D32),
-            date: '18 Oct 2026, 11:15 AM',
-            message: 'Promo code issue during checkout.',
-          ),
-          _TicketCard(
-            id: '#TKT-09721',
-            status: 'Pending',
-            statusColor: const Color(0xFFBA1A1A),
-            date: '15 Oct 2026, 09:45 AM',
-            message: 'Requested delivery address update for active plan.',
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
-            ),
-            child: Column(
-              children: [
-                const Text('Need new help?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Our team is online 24/7 for your support requests.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SubmitTicketScreen()),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : RefreshIndicator(
+              color: AppTheme.primary,
+              onRefresh: _loadTickets,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                children: [
+                  ..._tickets.map((t) {
+                    final status = (t['status'] ?? '').toString();
+                    return _TicketCard(
+                      id: '#TKT-${t['id'] ?? ''}',
+                      status: status,
+                      statusColor: _statusColor(status),
+                      date: (t['created_at'] ?? t['date'] ?? '').toString(),
+                      message: (t['subject'] ?? t['description'] ?? '').toString(),
+                    );
+                  }),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE1BEC0)),
                     ),
-                    child: const Text('Create New Ticket'),
+                    child: Column(
+                      children: [
+                        const Text('Need new help?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Our team is online 24/7 for your support requests.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SubmitTicketScreen()),
+                            ),
+                            child: const Text('Create New Ticket'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

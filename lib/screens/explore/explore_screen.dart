@@ -106,12 +106,12 @@ class _ExploreScreenState extends State<ExploreScreen> with AutomaticKeepAliveCl
     try {
       final auth = context.read<AuthProvider>();
       final results = await Future.wait([
-        _api.getFeaturedBanners().catchError((_) => null),
-        _api.getMarketingBanners().catchError((_) => null),
-        _api.getStoreBanners().catchError((_) => null),
-        _api.getCampaigns(params: {'per_page': 8}).catchError((_) => null),
-        _api.getStoreCategories().catchError((_) => null),
-        auth.isLoggedIn ? _api.getDashboard().catchError((_) => null) : Future.value(null),
+        _api.getFeaturedBanners().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getMarketingBanners().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getStoreBanners().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getCampaigns(params: {'per_page': 8}).then<dynamic>((r) => r).catchError((_) => null),
+        _api.getStoreCategories().then<dynamic>((r) => r).catchError((_) => null),
+        auth.isLoggedIn ? _api.getDashboard().then<dynamic>((r) => r).catchError((_) => null) : Future.value(null),
       ]);
 
       List<dynamic> banners = [];

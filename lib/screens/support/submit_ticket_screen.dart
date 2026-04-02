@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'ticket_submitted_screen.dart';
 
@@ -10,10 +11,61 @@ class SubmitTicketScreen extends StatefulWidget {
 }
 
 class _SubmitTicketScreenState extends State<SubmitTicketScreen> {
+  final _api = KutootApi();
   final _subjectController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _category = 'General';
-  String _orderId = 'Select order';
+  List<dynamic> _categories = [];
+  int? _selectedCategoryId;
+  bool _loadingCategories = true;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final res = await _api.getSupportCategories();
+      if (mounted && res.data is Map) {
+        final d = (res.data as Map)['data'];
+        setState(() {
+          _categories = d is List ? d : [];
+          _loadingCategories = false;
+        });
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loadingCategories = false);
+  }
+
+  Future<void> _submit() async {
+    if (_subjectController.text.isEmpty || _descriptionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in subject and description')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      await _api.createSupportTicket({
+        'subject': _subjectController.text,
+        'description': _descriptionController.text,
+        if (_selectedCategoryId != null) 'support_ticket_category_id': _selectedCategoryId,
+      });
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TicketSubmittedScreen()));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit ticket: $e')),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -42,19 +94,20 @@ class _SubmitTicketScreenState extends State<SubmitTicketScreen> {
               decoration: const InputDecoration(labelText: 'Subject'),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _category,
-              decoration: const InputDecoration(labelText: 'Category'),
-              items: ['General', 'Payment', 'Rewards', 'Account', 'Technical'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) => setState(() => _category = v ?? _category),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _orderId,
-              decoration: const InputDecoration(labelText: 'Order ID (optional)'),
-              items: ['Select order', 'ORD-001', 'ORD-002', 'ORD-003'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) => setState(() => _orderId = v ?? _orderId),
-            ),
+            _loadingCategories
+                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                : DropdownButtonFormField<int>(
+                    value: _selectedCategoryId,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: _categories.map((c) {
+                      final cat = c is Map ? c : {};
+                      return DropdownMenuItem<int>(
+                        value: cat['id'] is int ? cat['id'] : int.tryParse(cat['id'].toString()),
+                        child: Text(cat['name'] ?? 'Category'),
+                      );
+                    }).toList(),
+                    onChanged: (v) => setState(() => _selectedCategoryId = v),
+                  ),
             const SizedBox(height: 16),
             TextField(
               controller: _descriptionController,
@@ -87,8 +140,10 @@ class _SubmitTicketScreenState extends State<SubmitTicketScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TicketSubmittedScreen())),
-                child: const Text('Submit Ticket'),
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Submit Ticket'),
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'contact_support_screen.dart';
 
@@ -10,46 +11,46 @@ class SupportFaqScreen extends StatefulWidget {
 }
 
 class _SupportFaqScreenState extends State<SupportFaqScreen> {
-  int? _activeCategoryIndex = 1;
+  final _api = KutootApi();
+  int? _activeCategoryIndex = 0;
+  List<dynamic> _categories = [];
+  bool _loading = true;
 
-  static const _categories = [
-    _Category(icon: Icons.payments, label: 'Payments'),
-    _Category(icon: Icons.workspace_premium, label: 'Rewards'),
-    _Category(icon: Icons.approval, label: 'Stamps'),
-    _Category(icon: Icons.card_membership, label: 'Plans'),
-    _Category(icon: Icons.account_circle, label: 'Account'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFaqs();
+  }
 
-  static const _faqs = [
-    _FaqItem(
-      q: 'How do I earn stamps?',
-      a: 'Earning stamps is easy! Simply scan your unique Kutoot QR code at any '
-          'participating merchant whenever you make a purchase. Each qualified '
-          'purchase adds one stamp to your digital card. Once you collect 10 '
-          'stamps, your reward is automatically unlocked.',
-    ),
-    _FaqItem(
-      q: 'When is the next lucky draw?',
-      a: 'Our Grand Kinetic Lucky Draw happens every last Friday of the month! '
-          'You can enter by redeeming your accumulated rewards points for draw '
-          "tickets in the 'Rewards' tab. Make sure your profile is fully verified "
-          'to participate.',
-    ),
-    _FaqItem(
-      q: 'How to upgrade my plan?',
-      a: "To upgrade your membership plan, navigate to the Profile section and "
-          "select 'Member Status'. There you can compare our Premium and Elite "
-          'tiers and choose the one that fits your lifestyle. Payments are '
-          'processed securely via your saved method.',
-    ),
-    _FaqItem(
-      q: "What happens if a merchant doesn't scan?",
-      a: "If you encounter a scanning issue, please ask the merchant for a "
-          "physical receipt and use the 'Report Missing Stamp' feature in the "
-          'Support menu. Upload a photo of your receipt and our team will credit '
-          'your account within 24 hours.',
-    ),
-  ];
+  Future<void> _loadFaqs() async {
+    setState(() => _loading = true);
+    try {
+      final res = await _api.getFaqs();
+      if (mounted && res.data is Map) {
+        final d = (res.data as Map)['data'];
+        if (d is List) {
+          // Response is list of categories with nested FAQs
+          setState(() {
+            _categories = d;
+            _loading = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  List<dynamic> get _currentFaqs {
+    if (_categories.isEmpty) return [];
+    if (_activeCategoryIndex == null || _activeCategoryIndex! >= _categories.length) return [];
+    final cat = _categories[_activeCategoryIndex!];
+    if (cat is Map) {
+      final faqs = cat['faqs'];
+      return faqs is List ? faqs : [];
+    }
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,18 +61,25 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
           children: [
             _buildTopBar(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                children: [
-                  _buildHeroSearch(),
-                  const SizedBox(height: 28),
-                  _buildCategories(),
-                  const SizedBox(height: 28),
-                  _buildFaqList(),
-                  const SizedBox(height: 28),
-                  _buildAssistanceCard(),
-                ],
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                  : RefreshIndicator(
+                      onRefresh: _loadFaqs,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                        children: [
+                          _buildHeroSearch(),
+                          const SizedBox(height: 28),
+                          if (_categories.isNotEmpty) ...[
+                            _buildCategories(),
+                            const SizedBox(height: 28),
+                          ],
+                          _buildFaqList(),
+                          const SizedBox(height: 28),
+                          _buildAssistanceCard(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -198,7 +206,8 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
           spacing: 12,
           runSpacing: 12,
           children: List.generate(_categories.length, (i) {
-            final cat = _categories[i];
+            final cat = _categories[i] is Map ? _categories[i] as Map : {};
+            final label = cat['name'] ?? 'Category';
             final active = _activeCategoryIndex == i;
             return GestureDetector(
               onTap: () => setState(() => _activeCategoryIndex = i),
@@ -242,14 +251,14 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
                               ],
                       ),
                       child: Icon(
-                        cat.icon,
+                        Icons.help_outline,
                         color: active ? Colors.white : AppTheme.secondary,
                         size: 24,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      cat.label,
+                      label,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -267,6 +276,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
   }
 
   Widget _buildFaqList() {
+    final faqs = _currentFaqs;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,8 +289,16 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        ...List.generate(
-            _faqs.length, (i) => _FaqTile(q: _faqs[i].q, a: _faqs[i].a)),
+        if (faqs.isEmpty)
+          const Center(child: Text('No FAQs available', style: TextStyle(color: AppTheme.textSecondary)))
+        else
+          ...List.generate(faqs.length, (i) {
+            final faq = faqs[i] is Map ? faqs[i] as Map : {};
+            return _FaqTile(
+              q: faq['question'] ?? '',
+              a: faq['answer'] ?? '',
+            );
+          }),
       ],
     );
   }
@@ -367,18 +385,6 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
       ),
     );
   }
-}
-
-class _Category {
-  final IconData icon;
-  final String label;
-  const _Category({required this.icon, required this.label});
-}
-
-class _FaqItem {
-  final String q;
-  final String a;
-  const _FaqItem({required this.q, required this.a});
 }
 
 class _FaqTile extends StatefulWidget {

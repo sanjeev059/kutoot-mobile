@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'legal_loading_screen.dart';
 import 'need_help_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
+  final String? debugOtp;
 
-  const OtpScreen({super.key, required this.phoneNumber});
+  const OtpScreen({super.key, required this.phoneNumber, this.debugOtp});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -63,6 +66,7 @@ class _OtpScreenState extends State<OtpScreen> {
     _focusNodes.first.requestFocus();
     setState(() => _seconds = 30);
     _startTimer();
+    context.read<AuthProvider>().sendOtp(widget.phoneNumber);
   }
 
   void _onChange(int index, String value) {
@@ -78,12 +82,23 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() {});
   }
 
-  void _verify() {
+  Future<void> _verify() async {
     if (!_isValid || _navigating) return;
     setState(() => _navigating = true);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LegalLoadingScreen()),
-    );
+    final auth = context.read<AuthProvider>();
+    final success = await auth.verifyOtp(widget.phoneNumber, _otp);
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LegalLoadingScreen()),
+      );
+    } else {
+      setState(() => _navigating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Invalid or expired OTP')),
+      );
+      auth.clearError();
+    }
   }
 
   @override

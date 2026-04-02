@@ -35,8 +35,8 @@ class _DealsScreenState extends State<DealsScreen> {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        _api.getFeaturedBanners().catchError((_) => null),
-        _api.getMerchantLocations().catchError((_) => null),
+        _api.getFeaturedBanners().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getMerchantLocations().then<dynamic>((r) => r).catchError((_) => null),
       ]);
       if (mounted) {
         if (results[0] != null && results[0].data is Map && (results[0].data as Map)['data'] != null) {
@@ -150,14 +150,14 @@ class _DealsScreenState extends State<DealsScreen> {
                           if (_featured.isEmpty) {
                             return _FeaturedCard(
                               title: 'Deal ${i + 1}',
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CampaignsScreen(cityName: '', upgradeLabel: '', onUpgradeTap: () {}))),
                             );
                           }
                           final f = _featured[i] is Map ? _featured[i] as Map : {};
                           return _FeaturedCard(
                             title: f['title'] ?? f['name'] ?? 'Deal',
                             imageUrl: ImageUtils.fromBanner(f),
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampaignsScreen())),
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CampaignsScreen(cityName: '', upgradeLabel: '', onUpgradeTap: () {}))),
                           );
                         },
                       ),
