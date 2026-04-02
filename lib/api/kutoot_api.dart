@@ -75,11 +75,8 @@ class KutootApi {
   Future<Response> sendOtp(String identifier) =>
       _dio.post('/auth/send-otp', data: {'identifier': identifier});
 
-  Future<Response> getDevOtp(String identifier) =>
-      _dio.get('/auth/dev-otp', queryParameters: {'identifier': identifier});
-
-  Future<Response> verifyOtp(String mobile, String otp) =>
-      _dio.post('/auth/verify-otp', data: {'mobile': mobile, 'otp': otp});
+  Future<Response> verifyOtp(String identifier, String otp) =>
+      _dio.post('/auth/verify-otp', data: {'identifier': identifier, 'otp': otp});
 
   Future<Response> resetPassword(Map<String, dynamic> data) =>
       _dio.post('/auth/reset-password', data: data);

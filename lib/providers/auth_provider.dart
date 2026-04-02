@@ -23,7 +23,10 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.getUser();
-      _user = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final wrapper = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      _user = wrapper != null && wrapper['data'] is Map
+          ? Map<String, dynamic>.from(wrapper['data'] as Map)
+          : null;
     } catch (e) {
       _user = null;
     } finally {
@@ -33,7 +36,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Returns (success, debugOtp). In dev/local, backend may return debug_otp in the response.
+  /// Returns (success, debugOtp). Backend may return debug_otp in the response on non-production.
   Future<(bool, String?)> sendOtp(String identifier) async {
     _isLoading = true;
     _error = null;
@@ -41,16 +44,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.sendOtp(identifier);
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
-      var debugOtp = data?['debug_otp']?.toString();
-      // Fallback: fetch from dev endpoint if not in response (e.g. some env/config edge case)
-      if (debugOtp == null || debugOtp.isEmpty) {
-        try {
-          final devRes = await _api.getDevOtp(identifier);
-          final devData = devRes.data is Map ? Map<String, dynamic>.from(devRes.data as Map) : null;
-          debugOtp = devData?['otp']?.toString();
-        } catch (_) {}
-      }
+      final wrapper = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data = wrapper != null && wrapper['data'] is Map
+          ? Map<String, dynamic>.from(wrapper['data'] as Map)
+          : wrapper;
+      final debugOtp = data?['debug_otp']?.toString();
       _isLoading = false;
       notifyListeners();
       return (true, debugOtp);
@@ -69,7 +67,10 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final res = await _api.verifyOtp(identifier, otp);
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final wrapper = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data = wrapper != null && wrapper['data'] is Map
+          ? Map<String, dynamic>.from(wrapper['data'] as Map)
+          : wrapper;
       if (data != null && data['token'] != null) {
         await _api.setToken(data['token'] as String);
         _user = data['user'] is Map ? Map<String, dynamic>.from(data['user'] as Map) : null;
