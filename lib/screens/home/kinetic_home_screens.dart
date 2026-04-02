@@ -1,6 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import '../../api/kutoot_api.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/image_utils.dart';
 import '../auth/login_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../plans/plans_screen.dart';
@@ -8,9 +14,10 @@ import '../profile/profile_hub_screen.dart';
 import '../rewards/rewards_deals_screen.dart';
 import '../stores/store_profile_screen.dart';
 
+// ─── Guest Home ──────────────────────────────────────────────────
+
 class GuestHomeScreen extends StatefulWidget {
   final String cityName;
-
   const GuestHomeScreen({super.key, required this.cityName});
 
   @override
@@ -18,15 +25,8 @@ class GuestHomeScreen extends StatefulWidget {
 }
 
 class _GuestHomeScreenState extends State<GuestHomeScreen> {
-  int _activeCategory = 0;
-
   @override
   Widget build(BuildContext context) {
-    final stores = _stores.where((s) {
-      if (_activeCategory == 0) return true;
-      return s.category == _categories[_activeCategory];
-    }).toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       body: SafeArea(
@@ -44,9 +44,9 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.black.withOpacity(0.06)),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(Icons.account_circle_outlined, size: 16),
                       SizedBox(width: 4),
                       Text(
@@ -65,9 +65,6 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
               child: _HomeBody(
                 cityName: widget.cityName,
                 isGuest: true,
-                activeCategory: _activeCategory,
-                onCategoryTap: (idx) => setState(() => _activeCategory = idx),
-                stores: stores,
                 onOpenLive: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -119,6 +116,8 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
   }
 }
 
+// ─── Logged-in Home ──────────────────────────────────────────────
+
 class LoggedInHomeScreen extends StatefulWidget {
   final String cityName;
   const LoggedInHomeScreen({super.key, required this.cityName});
@@ -128,7 +127,6 @@ class LoggedInHomeScreen extends StatefulWidget {
 }
 
 class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
-  int _activeCategory = 0;
   String _upgradeLabel = 'UPGRADE';
 
   @override
@@ -147,11 +145,6 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stores = _stores.where((s) {
-      if (_activeCategory == 0) return true;
-      return s.category == _categories[_activeCategory];
-    }).toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
       body: SafeArea(
@@ -199,9 +192,6 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
               child: _HomeBody(
                 cityName: widget.cityName,
                 isGuest: false,
-                activeCategory: _activeCategory,
-                onCategoryTap: (idx) => setState(() => _activeCategory = idx),
-                stores: stores,
                 onOpenLive: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -258,9 +248,119 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   }
 }
 
-class AllStoresScreen extends StatelessWidget {
+// ─── All Stores Screen ───────────────────────────────────────────
+
+class AllStoresScreen extends StatefulWidget {
   final String cityName;
   const AllStoresScreen({super.key, required this.cityName});
+
+  @override
+  State<AllStoresScreen> createState() => _AllStoresScreenState();
+}
+
+class _AllStoresScreenState extends State<AllStoresScreen> {
+  final _api = KutootApi();
+  List<Map<String, dynamic>> _stores = [];
+  List<Map<String, dynamic>> _categories = [];
+  int _activeCategory = 0;
+  bool _loading = true;
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait([
+        _api.getStoreCategories().catchError((_) => null),
+        _api.getStores(params: {'per_page': 50}).catchError((_) => null),
+      ]);
+      final cats = _extractList(results[0]?.data);
+      final stores = _extractList(results[1]?.data);
+      if (mounted) {
+        setState(() {
+          _categories = [
+            {'id': 0, 'name': 'ALL'},
+            ...cats.map(_toMap),
+          ];
+          _stores = stores.map(_toMap).toList();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _search(String query) async {
+    _searchDebounce?.cancel();
+    _searchQuery = query;
+    if (query.isEmpty) {
+      _loadData();
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+      setState(() => _loading = true);
+      try {
+        final catId = _activeCategory > 0
+            ? _categories[_activeCategory]['id']
+            : null;
+        final params = <String, dynamic>{
+          'search': query,
+          'per_page': 50,
+        };
+        if (catId != null && catId != 0) params['category_id'] = catId;
+        final res = await _api.getStores(params: params);
+        final stores = _extractList(res.data);
+        if (mounted) {
+          setState(() {
+            _stores = stores.map(_toMap).toList();
+            _loading = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _loading = false);
+      }
+    });
+  }
+
+  void _filterByCategory(int idx) {
+    setState(() => _activeCategory = idx);
+    if (_searchQuery.isNotEmpty) {
+      _search(_searchQuery);
+      return;
+    }
+    if (idx == 0) {
+      _loadData();
+      return;
+    }
+    final catId = _categories[idx]['id'];
+    setState(() => _loading = true);
+    _api
+        .getStores(params: {'category_id': catId, 'per_page': 50})
+        .then((res) {
+      if (mounted) {
+        setState(() {
+          _stores = _extractList(res.data).map(_toMap).toList();
+          _loading = false;
+        });
+      }
+    }).catchError((_) {
+      if (mounted) setState(() => _loading = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +386,7 @@ class AllStoresScreen extends StatelessWidget {
                         size: 15, color: AppTheme.secondary),
                     const SizedBox(width: 2),
                     Text(
-                      '$cityName ▾',
+                      '${widget.cityName} ▾',
                       style: const TextStyle(
                         color: AppTheme.secondary,
                         fontWeight: FontWeight.w800,
@@ -300,52 +400,62 @@ class AllStoresScreen extends StatelessWidget {
               onRightTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PlansScreen(cityName: cityName),
+                  builder: (_) => PlansScreen(cityName: widget.cityName),
                 ),
               ),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 children: [
-                  const _SearchBar(hint: 'Search stores, brands, or items...'),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(_categories.length, (i) {
-                        final selected = i == 0;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? AppTheme.secondary
-                                  : const Color(0xFFE5E5E5),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              i == 0 ? 'All' : _categories[i],
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : AppTheme.textPrimary,
-                                fontWeight: selected
-                                    ? FontWeight.w800
-                                    : FontWeight.w700,
+                  _InteractiveSearchBar(
+                    hint: 'Search stores, brands, or items...',
+                    onChanged: _search,
+                  ),
+                  const SizedBox(height: 10),
+                  if (_categories.isNotEmpty)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            List.generate(_categories.length, (i) {
+                          final selected = _activeCategory == i;
+                          final name =
+                              _categories[i]['name']?.toString() ?? 'ALL';
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: GestureDetector(
+                              onTap: () => _filterByCategory(i),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 18, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? AppTheme.secondary
+                                      : const Color(0xFFE5E5E5),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  name.toUpperCase(),
+                                  style: TextStyle(
+                                    color: selected
+                                        ? Colors.white
+                                        : AppTheme.textPrimary,
+                                    fontWeight: selected
+                                        ? FontWeight.w800
+                                        : FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        }),
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 18),
                   Row(
-                    children: const [
-                      Expanded(
+                    children: [
+                      const Expanded(
                         child: Text(
                           'Nearby curated stores',
                           style: TextStyle(
@@ -357,8 +467,8 @@ class AllStoresScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '24 STORES FOUND',
-                        style: TextStyle(
+                        '${_stores.length} STORES FOUND',
+                        style: const TextStyle(
                           color: AppTheme.primary,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.6,
@@ -368,19 +478,31 @@ class AllStoresScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _stores.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.62,
+                  if (_loading)
+                    _buildGridSkeletons()
+                  else if (_stores.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Text('No stores found',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _stores.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.62,
+                      ),
+                      itemBuilder: (_, i) =>
+                          _StoreCardLargeApi(store: _stores[i]),
                     ),
-                    itemBuilder: (_, i) => _StoreCardLarge(store: _stores[i]),
-                  ),
                 ],
               ),
             ),
@@ -390,20 +512,32 @@ class AllStoresScreen extends StatelessWidget {
       floatingActionButton: _QrFab(),
       bottomNavigationBar: _HomeBottomNav(
         activeIndex: 0,
-        cityName: cityName,
+        cityName: widget.cityName,
         isLoggedIn: true,
         planLabel: 'UPGRADE',
       ),
     );
   }
+
+  Widget _buildGridSkeletons() => GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.62,
+        ),
+        itemBuilder: (_, __) => const _SkeletonBox(height: 250, borderRadius: 16),
+      );
 }
 
-class _HomeBody extends StatelessWidget {
+// ─── Home Body (API-connected) ───────────────────────────────────
+
+class _HomeBody extends StatefulWidget {
   final String cityName;
   final bool isGuest;
-  final int activeCategory;
-  final ValueChanged<int> onCategoryTap;
-  final List<_StoreItem> stores;
   final VoidCallback onOpenLive;
   final VoidCallback onOpenAnnouncements;
   final VoidCallback onSeeAll;
@@ -411,161 +545,598 @@ class _HomeBody extends StatelessWidget {
   const _HomeBody({
     required this.cityName,
     required this.isGuest,
-    required this.activeCategory,
-    required this.onCategoryTap,
-    required this.stores,
     required this.onOpenLive,
     required this.onOpenAnnouncements,
     required this.onSeeAll,
   });
 
   @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
+  final _api = KutootApi();
+  List<Map<String, dynamic>> _banners = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _stores = [];
+  List<Map<String, dynamic>> _searchResults = [];
+  int _activeCategory = 0;
+  bool _loading = true;
+  bool _searching = false;
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAll();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadAll() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+      // Fire all requests in parallel for speed
+      final results = await Future.wait([
+        isLoggedIn
+            ? _api.getBanners().catchError((_) => null)
+            : Future.value(null),
+        _api.getStoreCategories().catchError((_) => null),
+        isLoggedIn
+            ? _api.getStores(params: {'per_page': 10}).catchError((_) => null)
+            : Future.value(null),
+      ]);
+
+      // Banners: {data: {featured: [], marketing: [], store: []}}
+      List<Map<String, dynamic>> banners = [];
+      if (results[0] != null) {
+        final wrapper = results[0]?.data;
+        if (wrapper is Map) {
+          final data = wrapper['data'];
+          if (data is Map) {
+            for (final key in ['featured', 'marketing', 'store']) {
+              final list = data[key];
+              if (list is List) {
+                banners.addAll(list
+                    .whereType<Map>()
+                    .map((m) => Map<String, dynamic>.from(m)));
+              }
+            }
+          }
+        }
+      }
+
+      // Categories
+      List<dynamic> cats = _extractList(results[1]?.data);
+
+      // Stores
+      List<dynamic> stores = _extractList(results[2]?.data);
+
+      if (mounted) {
+        setState(() {
+          _banners = banners;
+          _categories = cats.map(_toMap).toList();
+          _stores = stores.map(_toMap).toList();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    _searchQuery = query;
+    if (query.isEmpty) {
+      setState(() {
+        _searching = false;
+        _searchResults = [];
+      });
+      return;
+    }
+    setState(() => _searching = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted || _searchQuery != query) return;
+      try {
+        final res = await _api
+            .getStores(params: {'search': query, 'per_page': 15});
+        final stores = _extractList(res.data);
+        if (mounted && _searchQuery == query) {
+          setState(() {
+            _searchResults = stores.map(_toMap).toList();
+            _searching = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _searching = false);
+      }
+    });
+  }
+
+  void _onCategoryTap(int idx) {
+    setState(() => _activeCategory = idx);
+    if (idx == 0) {
+      _loadAll();
+      return;
+    }
+    final catId = _categories[idx - 1]['id']; // offset by 1 for ALL
+    setState(() => _loading = true);
+    _api
+        .getStores(params: {'category_id': catId, 'per_page': 10})
+        .then((res) {
+      final stores = _extractList(res.data);
+      if (mounted) {
+        setState(() {
+          _stores = stores.map(_toMap).toList();
+          _loading = false;
+        });
+      }
+    }).catchError((_) {
+      if (mounted) setState(() => _loading = false);
+    });
+  }
+
+  IconData _categoryIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('food') || n.contains('restaurant')) {
+      return Icons.restaurant_rounded;
+    }
+    if (n.contains('fashion') || n.contains('cloth')) return Icons.checkroom;
+    if (n.contains('electronic') || n.contains('tech')) {
+      return Icons.devices_other;
+    }
+    if (n.contains('home') || n.contains('furniture')) return Icons.chair;
+    if (n.contains('beauty') || n.contains('salon') || n.contains('spa')) {
+      return Icons.spa_rounded;
+    }
+    if (n.contains('coffee') || n.contains('cafe')) {
+      return Icons.coffee_rounded;
+    }
+    if (n.contains('retail') || n.contains('shop')) {
+      return Icons.shopping_bag_rounded;
+    }
+    return Icons.grid_view;
+  }
+
+  Color _categoryColor(int i) {
+    const colors = [
+      AppTheme.primary,
+      AppTheme.secondary,
+      Color(0xFF6C63FF),
+      Color(0xFFF2DCE3),
+      Color(0xFF2DBDB5),
+      Color(0xFFF4A261),
+    ];
+    return colors[i % colors.length];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      children: [
-        const _SearchBar(hint: 'Search for brands or products...'),
-        const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: SizedBox(
-            height: 170,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCPH9hMRCozh3NfthtmLUKM6o287QOpScFM7sZ1vv6CrYy63ww2DV_t4JFmMZL3kEB_Dr7EAmhF8l0bHvPpTNRConFTaAFvxbewYzw8DrCf9ffWdOoulpmTlPy8WaqZeujPiC199Y0uhnmERB14HOa29AbH4dc10mOmo9hZb1O3x0D15yazXmi2SqdtwfyAOFLbo1qKrDIlvtAUu1Ja6CBiCA4cOUDl8Z8bmpehyRtcECfYmHsUzADG8PeATdI0NO9eW2tJ3iFPaVDp',
-                  fit: BoxFit.cover,
+    final showSearchResults = _searchQuery.isNotEmpty;
+
+    // ALL + API categories
+    final allCategories = <Map<String, dynamic>>[
+      {'id': 0, 'name': 'ALL'},
+      ..._categories,
+    ];
+
+    return RefreshIndicator(
+      onRefresh: _loadAll,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        children: [
+          _InteractiveSearchBar(
+            hint: 'Search for brands or products...',
+            onChanged: _onSearchChanged,
+          ),
+          const SizedBox(height: 16),
+
+          // ── Search results ──
+          if (showSearchResults) ...[
+            if (_searching)
+              ..._buildSearchSkeletons()
+            else if (_searchResults.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(30),
+                  child: Text('No stores found',
+                      style: TextStyle(color: Colors.grey, fontSize: 16)),
                 ),
-                Container(
-                  alignment: Alignment.bottomLeft,
-                  padding: const EdgeInsets.all(14),
+              )
+            else ...[
+              Text(
+                '${_searchResults.length} results',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              ..._searchResults.map((s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _StoreListTile(store: s),
+                  )),
+            ],
+          ] else ...[
+            // ── Banner carousel ──
+            if (_banners.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: SizedBox(
+                  height: 170,
+                  child: PageView.builder(
+                    itemCount: _banners.length,
+                    itemBuilder: (_, i) {
+                      final b = _banners[i];
+                      final imgUrl = ImageUtils.fromBanner(b);
+                      final title = b['title']?.toString() ?? '';
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (imgUrl != null && imgUrl.isNotEmpty)
+                            CachedNetworkImage(
+                              imageUrl: imgUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                  color:
+                                      AppTheme.primary.withOpacity(0.1)),
+                              errorWidget: (_, __, ___) =>
+                                  _bannerPlaceholder(title),
+                            )
+                          else
+                            _bannerPlaceholder(title),
+                          if (title.isNotEmpty)
+                            Container(
+                              alignment: Alignment.bottomLeft,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    AppTheme.primary.withOpacity(0.85),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              )
+            else if (_loading)
+              _SkeletonBox(height: 170, borderRadius: 22)
+            else
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  height: 170,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [
-                        AppTheme.primary.withOpacity(0.85),
-                        Colors.transparent
+                        AppTheme.primary,
+                        AppTheme.primary.withOpacity(0.7),
                       ],
                     ),
                   ),
-                  child: const Text(
-                    'Upto 70% Off',
+                  child: const Center(
+                    child: Text('Welcome to Kutoot!',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20)),
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 18),
+
+            // ── Categories ──
+            const Text(
+              'DISCOVER CATEGORIES',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 1.5,
+                color: Color(0xFF9A9A9A),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 94,
+              child: _categories.isEmpty && _loading
+                  ? _buildCategorySkeletons()
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: allCategories.length,
+                      itemBuilder: (_, i) {
+                        final selected = _activeCategory == i;
+                        final name =
+                            allCategories[i]['name']?.toString() ?? 'ALL';
+                        return Padding(
+                          padding: EdgeInsets.only(
+                              right: i == allCategories.length - 1
+                                  ? 0
+                                  : 12),
+                          child: _CategoryBubble(
+                            label: name.toUpperCase(),
+                            selected: selected,
+                            onTap: () => _onCategoryTap(i),
+                            color: _categoryColor(i),
+                            icon: _categoryIcon(name),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Campaign entry cards ──
+            Row(
+              children: [
+                Expanded(
+                  child: _FlowEntryCard(
+                    title: 'LIVE',
+                    subtitle: 'Campaigns',
+                    icon: Icons.bolt_rounded,
+                    onTap: widget.onOpenLive,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _FlowEntryCard(
+                    title: 'ANNOUNCED',
+                    subtitle: 'Campaigns',
+                    icon: Icons.campaign_rounded,
+                    onTap: widget.onOpenAnnouncements,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Stores Nearby ──
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Stores Nearby',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textPrimary,
                       fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: widget.onSeeAll,
+                  child: const Text(
+                    'SEE ALL  ▶',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'DISCOVER CATEGORIES',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 1.5,
-            color: Color(0xFF9A9A9A),
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 94,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            itemBuilder: (_, i) {
-              final selected = activeCategory == i;
-              return Padding(
-                padding: EdgeInsets.only(
-                    right: i == _categories.length - 1 ? 0 : 12),
-                child: _CategoryBubble(
-                  label: _categories[i],
-                  selected: selected,
-                  onTap: () => onCategoryTap(i),
-                  color: i == 1
-                      ? AppTheme.primary
-                      : i == 2
-                          ? AppTheme.secondary
-                          : i == 3
-                              ? AppTheme.tertiaryContainer
-                              : const Color(0xFFF2DCE3),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _FlowEntryCard(
-                title: 'LIVE',
-                subtitle: 'Campaigns',
-                icon: Icons.bolt_rounded,
-                onTap: onOpenLive,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _FlowEntryCard(
-                title: 'ANNOUNCED',
-                subtitle: 'Campaigns',
-                icon: Icons.campaign_rounded,
-                onTap: onOpenAnnouncements,
-              ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 220,
+              child: _loading && _stores.isEmpty
+                  ? _buildStoreSkeletons()
+                  : _stores.isEmpty
+                      ? const Center(
+                          child: Text('No stores found',
+                              style: TextStyle(color: Colors.grey)))
+                      : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _stores.length,
+                          itemBuilder: (_, i) => Padding(
+                            padding: EdgeInsets.only(
+                                right:
+                                    i == _stores.length - 1 ? 0 : 12),
+                            child: _StoreCardCompactApi(
+                                store: _stores[i]),
+                          ),
+                        ),
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Stores Nearby',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: onSeeAll,
-              child: const Text(
-                'SEE ALL  ▶',
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 220,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: stores.length,
-            itemBuilder: (_, i) => Padding(
-              padding: EdgeInsets.only(right: i == stores.length - 1 ? 0 : 12),
-              child: _StoreCardCompact(store: stores[i]),
-            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bannerPlaceholder(String title) => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.primary.withOpacity(0.6),
+              AppTheme.primary,
+            ],
           ),
         ),
-      ],
+        child: Center(
+          child: Text(
+            title.isNotEmpty ? title : 'Kutoot',
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 20),
+          ),
+        ),
+      );
+
+  List<Widget> _buildSearchSkeletons() => List.generate(
+        4,
+        (_) => const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: _SkeletonBox(height: 76, borderRadius: 16),
+        ),
+      );
+
+  Widget _buildCategorySkeletons() => ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 6,
+        itemBuilder: (_, __) => const Padding(
+          padding: EdgeInsets.only(right: 12),
+          child: Column(
+            children: [
+              _SkeletonBox(width: 62, height: 62, borderRadius: 18),
+              SizedBox(height: 8),
+              _SkeletonBox(width: 50, height: 10, borderRadius: 5),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildStoreSkeletons() => ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 3,
+        itemBuilder: (_, __) => const Padding(
+          padding: EdgeInsets.only(right: 12),
+          child: _SkeletonBox(width: 155, height: 220, borderRadius: 18),
+        ),
+      );
+}
+
+// ─── Skeleton Shimmer Widget ─────────────────────────────────────
+
+class _SkeletonBox extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double borderRadius;
+  const _SkeletonBox({
+    this.width,
+    required this.height,
+    this.borderRadius = 12,
+  });
+
+  @override
+  State<_SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: const [
+                Color(0xFFEEECEC),
+                Color(0xFFF5F3F3),
+                Color(0xFFEEECEC),
+              ],
+              stops: [
+                (_ctrl.value - 0.3).clamp(0.0, 1.0),
+                _ctrl.value,
+                (_ctrl.value + 0.3).clamp(0.0, 1.0),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────
+
+List<dynamic> _extractList(dynamic data) {
+  if (data is Map) {
+    final d = data['data'];
+    if (d is List) return d;
+    if (d is Map && d['data'] is List) return d['data'] as List;
+  }
+  if (data is List) return data;
+  return [];
+}
+
+Map<String, dynamic> _toMap(dynamic item) {
+  if (item is Map<String, dynamic>) return item;
+  if (item is Map) return Map<String, dynamic>.from(item);
+  return {};
+}
+
+String _storeName(Map<String, dynamic> s) {
+  return s['store_name']?.toString() ??
+      s['branch_name']?.toString() ??
+      (s['merchant'] is Map
+          ? (s['merchant'] as Map)['name']?.toString()
+          : null) ??
+      s['name']?.toString() ??
+      'Store';
+}
+
+String _storeCategory(Map<String, dynamic> s) {
+  final cat = s['merchant_category'] ?? s['category'];
+  if (cat is Map) return cat['name']?.toString() ?? '';
+  return s['category']?.toString() ?? '';
+}
+
+String _storeRating(Map<String, dynamic> s) {
+  final r = s['star_rating'] ?? s['rating'];
+  if (r is num) return r.toStringAsFixed(1);
+  if (r is String) return r;
+  return '4.5';
+}
+
+String? _storeImage(Map<String, dynamic> s) {
+  return ImageUtils.fromStore(s);
+}
+
+// ─── UI Components ───────────────────────────────────────────────
 
 class _HomeTopBar extends StatelessWidget {
   final Widget left;
@@ -600,7 +1171,8 @@ class _HomeTopBar extends StatelessWidget {
             onTap: onRightTap,
             borderRadius: BorderRadius.circular(999),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.primary,
                 borderRadius: BorderRadius.circular(999),
@@ -629,33 +1201,97 @@ class _HomeTopBar extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _InteractiveSearchBar extends StatefulWidget {
   final String hint;
-  const _SearchBar({required this.hint});
+  final ValueChanged<String> onChanged;
+  const _InteractiveSearchBar(
+      {required this.hint, required this.onChanged});
+
+  @override
+  State<_InteractiveSearchBar> createState() =>
+      _InteractiveSearchBarState();
+}
+
+class _InteractiveSearchBarState extends State<_InteractiveSearchBar> {
+  final _controller = TextEditingController();
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, color: Color(0x7A1C1C1C), size: 28),
-          const SizedBox(width: 8),
-          Text(
-            hint,
-            style: const TextStyle(
-              color: Color(0x661C1C1C),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
+    final theme = Theme.of(context);
+    return Focus(
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: _focused
+              ? theme.colorScheme.surfaceContainerLowest
+              : theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _focused
+                ? theme.colorScheme.primary.withOpacity(0.25)
+                : theme.colorScheme.outlineVariant.withOpacity(0.3),
           ),
-        ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.search_rounded,
+              color: _focused
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                onChanged: (v) {
+                  widget.onChanged(v);
+                  setState(() {});
+                },
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
+                ),
+              ),
+            ),
+            if (_controller.text.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _controller.clear();
+                  widget.onChanged('');
+                  setState(() {});
+                },
+                child: Icon(
+                  Icons.close_rounded,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -732,18 +1368,20 @@ class _CategoryBubble extends StatelessWidget {
   final bool selected;
   final Color color;
   final VoidCallback onTap;
+  final IconData icon;
 
   const _CategoryBubble({
     required this.label,
     required this.selected,
     required this.color,
     required this.onTap,
+    this.icon = Icons.grid_view,
   });
 
   @override
   Widget build(BuildContext context) {
     final iconColor =
-        label == 'ALL' || label == 'HOME' ? AppTheme.primary : Colors.white;
+        color.computeLuminance() > 0.5 ? AppTheme.primary : Colors.white;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -763,17 +1401,7 @@ class _CategoryBubble extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              label == 'FASHION'
-                  ? Icons.checkroom
-                  : label == 'ELECTRONICS'
-                      ? Icons.devices_other
-                      : label == 'HOME'
-                          ? Icons.chair
-                          : Icons.grid_view,
-              color: iconColor,
-              size: 28,
-            ),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
           const SizedBox(height: 8),
           Text(
@@ -790,19 +1418,25 @@ class _CategoryBubble extends StatelessWidget {
   }
 }
 
-class _StoreCardCompact extends StatelessWidget {
-  final _StoreItem store;
-  const _StoreCardCompact({required this.store});
+class _StoreCardCompactApi extends StatelessWidget {
+  final Map<String, dynamic> store;
+  const _StoreCardCompactApi({required this.store});
 
   @override
   Widget build(BuildContext context) {
+    final name = _storeName(store);
+    final rating = _storeRating(store);
+    final imgUrl = _storeImage(store);
+    final category = _storeCategory(store);
+    final badge = store['badge']?.toString() ?? category;
+
     return SizedBox(
       width: 155,
       child: InkWell(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => StoreProfileScreen(store: store.toMap()),
+            builder: (_) => StoreProfileScreen(store: store),
           ),
         ),
         borderRadius: BorderRadius.circular(18),
@@ -811,7 +1445,17 @@ class _StoreCardCompact extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(store.image, fit: BoxFit.cover),
+              if (imgUrl != null && imgUrl.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: imgUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                      color: AppTheme.primary.withOpacity(0.1)),
+                  errorWidget: (_, __, ___) =>
+                      _storePlaceholder(name),
+                )
+              else
+                _storePlaceholder(name),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -819,28 +1463,31 @@ class _StoreCardCompact extends StatelessWidget {
                     end: Alignment.topCenter,
                     colors: [
                       Colors.black.withOpacity(0.88),
-                      Colors.transparent
+                      Colors.transparent,
                     ],
                   ),
                 ),
               ),
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    store.badge,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 10),
+              if (badge.isNotEmpty)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      badge.length > 15
+                          ? badge.substring(0, 15)
+                          : badge,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 10),
+                    ),
                   ),
                 ),
-              ),
               Positioned(
                 left: 10,
                 right: 10,
@@ -848,7 +1495,9 @@ class _StoreCardCompact extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(store.name,
+                    Text(name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -857,9 +1506,10 @@ class _StoreCardCompact extends StatelessWidget {
                     Row(
                       children: [
                         const Icon(Icons.star,
-                            size: 13, color: AppTheme.tertiaryContainer),
+                            size: 13,
+                            color: AppTheme.tertiaryContainer),
                         Text(
-                          ' ${store.rating}  • ${store.distance}',
+                          ' $rating',
                           style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 11,
@@ -876,19 +1526,41 @@ class _StoreCardCompact extends StatelessWidget {
       ),
     );
   }
+
+  static Widget _storePlaceholder(String name) => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.primary.withOpacity(0.3),
+              AppTheme.primary.withOpacity(0.6),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Icon(Icons.store_rounded,
+              color: Colors.white.withOpacity(0.7), size: 40),
+        ),
+      );
 }
 
-class _StoreCardLarge extends StatelessWidget {
-  final _StoreItem store;
-  const _StoreCardLarge({required this.store});
+class _StoreCardLargeApi extends StatelessWidget {
+  final Map<String, dynamic> store;
+  const _StoreCardLargeApi({required this.store});
 
   @override
   Widget build(BuildContext context) {
+    final name = _storeName(store);
+    final rating = _storeRating(store);
+    final imgUrl = _storeImage(store);
+    final badge = _storeCategory(store);
+
     return InkWell(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => StoreProfileScreen(store: store.toMap()),
+          builder: (_) => StoreProfileScreen(store: store),
         ),
       ),
       borderRadius: BorderRadius.circular(16),
@@ -903,31 +1575,51 @@ class _StoreCardLarge extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(store.image, fit: BoxFit.cover),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondary,
-                          borderRadius: BorderRadius.circular(10),
+                    if (imgUrl != null && imgUrl.isNotEmpty)
+                      CachedNetworkImage(
+                        imageUrl: imgUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                            color: AppTheme.primary.withOpacity(0.08)),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppTheme.primary.withOpacity(0.08),
+                          child: const Icon(Icons.store_rounded,
+                              size: 40, color: AppTheme.primary),
                         ),
-                        child: Text(
-                          store.badge,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 9),
+                      )
+                    else
+                      Container(
+                        color: AppTheme.primary.withOpacity(0.08),
+                        child: const Icon(Icons.store_rounded,
+                            size: 40, color: AppTheme.primary),
+                      ),
+                    if (badge.isNotEmpty)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            badge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 9),
+                          ),
                         ),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -941,11 +1633,13 @@ class _StoreCardLarge extends StatelessWidget {
                         child: Row(
                           children: [
                             const Icon(Icons.star,
-                                color: AppTheme.tertiaryContainer, size: 13),
+                                color: AppTheme.tertiaryContainer,
+                                size: 13),
                             Text(
-                              ' ${store.rating}',
+                              ' $rating',
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 11),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11),
                             ),
                           ],
                         ),
@@ -958,17 +1652,19 @@ class _StoreCardLarge extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
               child: Text(
-                store.name,
+                name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w800),
               ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
-                '📍 ${store.distance} AWAY',
+                '📍 ${store['address'] ?? 'Nearby'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                     fontSize: 10,
                     color: Color(0x99594042),
@@ -1024,6 +1720,92 @@ class _StoreCardLarge extends StatelessWidget {
   }
 }
 
+class _StoreListTile extends StatelessWidget {
+  final Map<String, dynamic> store;
+  const _StoreListTile({required this.store});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _storeName(store);
+    final rating = _storeRating(store);
+    final imgUrl = _storeImage(store);
+    final category = _storeCategory(store);
+
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => StoreProfileScreen(store: store)),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: imgUrl != null && imgUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imgUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                            color: AppTheme.primary.withOpacity(0.1)),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppTheme.primary.withOpacity(0.1),
+                          child: const Icon(Icons.store_rounded,
+                              color: AppTheme.primary),
+                        ),
+                      )
+                    : Container(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        child: const Icon(Icons.store_rounded,
+                            color: AppTheme.primary),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  if (category.isNotEmpty)
+                    Text(category,
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star,
+                    size: 14, color: AppTheme.tertiaryContainer),
+                const SizedBox(width: 2),
+                Text(rating,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _QrFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1041,7 +1823,8 @@ class _QrFab extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 27),
+      child:
+          const Icon(Icons.qr_code_scanner, color: Colors.white, size: 27),
     );
   }
 }
@@ -1067,13 +1850,16 @@ class _HomeBottomNav extends StatelessWidget {
       Icons.confirmation_num_rounded,
       Icons.person_rounded,
     ];
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
     return Container(
-      height: 84,
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      height: 68 + bottomPadding,
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border:
+            Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: List.generate(items.length, (i) {
@@ -1091,7 +1877,8 @@ class _HomeBottomNav extends StatelessWidget {
                         onUpgradeTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PlansScreen(cityName: cityName),
+                            builder: (_) =>
+                                PlansScreen(cityName: cityName),
                           ),
                         ),
                       ),
@@ -1104,13 +1891,15 @@ class _HomeBottomNav extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => PlansScreen(cityName: cityName),
+                        builder: (_) =>
+                            PlansScreen(cityName: cityName),
                       ),
                     );
                   } else {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const LoginScreen()),
                     );
                   }
                   return;
@@ -1129,7 +1918,8 @@ class _HomeBottomNav extends StatelessWidget {
                   } else {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const LoginScreen()),
                     );
                   }
                 }
@@ -1139,7 +1929,9 @@ class _HomeBottomNav extends StatelessWidget {
                 children: [
                   Icon(
                     icons[i],
-                    color: active ? AppTheme.primary : const Color(0xFF9A9A9A),
+                    color: active
+                        ? AppTheme.primary
+                        : const Color(0xFF9A9A9A),
                     size: 25,
                   ),
                   const SizedBox(height: 2),
@@ -1147,9 +1939,11 @@ class _HomeBottomNav extends StatelessWidget {
                     items[i],
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-                      color:
-                          active ? AppTheme.primary : const Color(0xFF9A9A9A),
+                      fontWeight:
+                          active ? FontWeight.w900 : FontWeight.w700,
+                      color: active
+                          ? AppTheme.primary
+                          : const Color(0xFF9A9A9A),
                     ),
                   ),
                 ],
@@ -1161,98 +1955,3 @@ class _HomeBottomNav extends StatelessWidget {
     );
   }
 }
-
-class _StoreItem {
-  final int id;
-  final String name;
-  final String category;
-  final String image;
-  final String badge;
-  final String rating;
-  final String distance;
-
-  const _StoreItem({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.image,
-    required this.badge,
-    required this.rating,
-    required this.distance,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'category': category,
-      'image': image,
-      'badge': badge,
-      'rating': rating,
-      'distance': distance,
-      'is_demo_store': true,
-      'source': 'home_static',
-    };
-  }
-}
-
-const List<String> _categories = [
-  'ALL',
-  'FASHION',
-  'ELECTRONICS',
-  'HOME',
-  'BEAUTY'
-];
-
-const List<_StoreItem> _stores = [
-  _StoreItem(
-    id: 101,
-    name: 'Westside',
-    category: 'FASHION',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuC-G-9JECKc4p-QWP2LcUZycO_1MrQk6lY9_tzqV_OEFbUimLGUT63ICHGRgaMnVslwyryofi3hAO-R_PRGPWK4Q_GiiQCbDdur4do_MaV-ddX7NbEBhi6FJsAlUBODWGe4sqAqfHqEfxPmRJ5EAJm3O8ZP_HdxZLrI0Pn5ZEQ--6yY-x24M9W9i6JHXwsM6vRmAvBsQx16-l50FCqp6twRNIWJUXcouZMYdxmFGrzM8RyNwWskC48v32ktcLOfzQGVNEbrRJosrZhm',
-    badge: '15% OFF',
-    rating: '4.5',
-    distance: '1.2 km',
-  ),
-  _StoreItem(
-    id: 102,
-    name: 'Croma',
-    category: 'ELECTRONICS',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAUDHP3i51_AfeqtPe-dzEkR4HWCjgcnjEwU44IG3_sD8Ui2-XaLe-rPaAH9ILxU3uZAT1xMGXorP6yVustg6lFMyagLgupRbO37jsYuXgQL6h3efR8uk-JbZV4g02Wo3iHRmVt3CpCT6cw3Bqvz96k_r1QwOx56g2PHd9-QWwGYaT5Is4k-FXLC-MPnm_oDzcxkziZGl-mpJMjScJnoCOojnbN6ttS2Dr2dShDSEkn5-M83mBwDvg62ZKioLvJlGMBXpXN5HgzwQu1',
-    badge: 'EXCLUSIVE',
-    rating: '4.7',
-    distance: '2.1 km',
-  ),
-  _StoreItem(
-    id: 103,
-    name: 'Reliance Digital',
-    category: 'ELECTRONICS',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAfYcqf6LF2jIg9uNMLSLCNPhurMGTqyKtihB8_sjbCaSIPNyvr9WWofdp35dY5nOb3MiQVQlHnZs6Ik7D9Q9jNQ5hBqV1_FOn72NufxfV59Hbz-mhRUAXoXzWA9h9_S10q3Dww2zro_DdIwC06-kSHQ1iaj0XFB5MTMWsSR7v_C4Jhkq0LR_jvEveNv7fOtvC6UR-aydqop_SqGEgUWCeGd5VAYOCoQ3dJdVf3Z3CsDI1xslffQtOfzBeXTgUJH1escO6PWZR8esI',
-    badge: '10% OFF',
-    rating: '4.4',
-    distance: '1.9 km',
-  ),
-  _StoreItem(
-    id: 104,
-    name: 'Nykaa Luxe',
-    category: 'BEAUTY',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDMQ8epcMm-c6LllV8dXvZFaapPJd5hz-EmlGWv8ItN6OLpKPTc-reumCV6Pm3193580lp1cLKh5sGupU470ffI-laRJNFFKmlwvHPjYHUKoczHmhzeoN-aSM3D9MdEEsiYXOuyWwp6nGh724UIg2WzY7s57L1oE2mNwphs-OUJtUHSJiiVCVmS4dSrAPmmYgUe4_I-J8qPMuzg3ABGlTcVf5-5qoKv3wGHxqIl6v5qtU3kZJwJ6dazxfg0Min-Y7DqBfjznNvls_g',
-    badge: 'FLAT ₹500',
-    rating: '4.9',
-    distance: '1.5 km',
-  ),
-  _StoreItem(
-    id: 105,
-    name: 'Home Centre',
-    category: 'HOME',
-    image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuC8S9lnC0l-6bxkdx4sx7b96JcGcAH0AEdqPCvAhm8wVZnTywYsMWEDbxn1oTDV61KZbQET06wsKc4_vIXehaIl25sMPEomuuorwsK-Y54fOrueEeCW9OSlY6HlksO416zUNzgU-26CgQU_vs6GNPDOH9HhZDcPQv9jy2JQ_5Z3LyNFdsfRTcTeFJ_hC1YwQhXSEIV0XswHW7aK2jtT6uthtP4LBn4ftAj84mvpswr8IsVka1BztAdvMcXfuHYQQEzL7ouq1ron7sw',
-    badge: 'EXT 10% OFF',
-    rating: '4.2',
-    distance: '2.4 km',
-  ),
-];

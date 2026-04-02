@@ -407,7 +407,7 @@ class _CampaignTicket extends StatelessWidget {
                           letterSpacing: 1.1,
                         ),
                       ),
-                      child: const Text('ENTER VIA APP TASKS'),
+                      child: const Text('My Stamps'),
                     ),
                   ),
                 ],

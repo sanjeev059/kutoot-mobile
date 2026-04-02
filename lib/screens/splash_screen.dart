@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/location_bootstrap_service.dart';
 import 'home/kinetic_home_screens.dart';
 
@@ -25,12 +27,22 @@ class _SplashScreenState extends State<SplashScreen>
     )..repeat();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 3500));
+      final auth = context.read<AuthProvider>();
+      // Check auth and location in parallel for speed
+      final results = await Future.wait([
+        auth.checkAuth().then((_) => null),
+        Future<void>.delayed(const Duration(milliseconds: 3500)),
+      ]);
       if (!mounted) return;
       final city = await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
+
+      final Widget destination = auth.isLoggedIn
+          ? LoggedInHomeScreen(cityName: city)
+          : GuestHomeScreen(cityName: city);
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => GuestHomeScreen(cityName: city)),
+        MaterialPageRoute(builder: (_) => destination),
       );
     });
   }
@@ -92,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 22),
                 const Text(
-                  'THE CULINARY CURATOR',
+                  'FUTURE OF LOCAL COMMERCE',
                   style: TextStyle(
                     color: Color(0xFF2D2927),
                     fontSize: 9.8,
