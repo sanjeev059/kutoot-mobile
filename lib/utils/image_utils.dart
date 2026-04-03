@@ -7,7 +7,7 @@ class ImageUtils {
     if (url == null || url.toString().trim().isEmpty) return '';
     final s = url.toString().trim();
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
-    final base = Env.apiBaseUrl.replaceAll(RegExp(r'/api/v1$'), '');
+    final base = Env.apiBaseUrl.replaceAll(RegExp(r'/api/mobile$'), '');
     return s.startsWith('/') ? '$base$s' : '$base/$s';
   }
 

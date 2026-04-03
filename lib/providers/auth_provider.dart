@@ -34,7 +34,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Returns (success, debugOtp). In dev/local, backend may return debug_otp in the response.
+  /// Returns (success, debugOtp). Backend may return debug_otp in the response on non-production.
   Future<(bool, String?)> sendOtp(String identifier) async {
     _isLoading = true;
     _error = null;

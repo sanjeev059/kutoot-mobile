@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'contact_support_screen.dart';
 
@@ -20,13 +21,11 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
     super.dispose();
   }
 
-  static const _categories = [
-    _Category(icon: Icons.payments, label: 'Payments'),
-    _Category(icon: Icons.workspace_premium, label: 'Rewards'),
-    _Category(icon: Icons.approval, label: 'Stamps'),
-    _Category(icon: Icons.card_membership, label: 'Plans'),
-    _Category(icon: Icons.account_circle, label: 'Account'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFaqs();
+  }
 
   static const Map<int, List<_FaqItem>> _categoryFaqs = {
     0: [
@@ -137,18 +136,25 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
           children: [
             _buildTopBar(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                children: [
-                  _buildHeroSearch(),
-                  const SizedBox(height: 28),
-                  _buildCategories(),
-                  const SizedBox(height: 28),
-                  _buildFaqList(),
-                  const SizedBox(height: 28),
-                  _buildAssistanceCard(),
-                ],
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                  : RefreshIndicator(
+                      onRefresh: _loadFaqs,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                        children: [
+                          _buildHeroSearch(),
+                          const SizedBox(height: 28),
+                          if (_categories.isNotEmpty) ...[
+                            _buildCategories(),
+                            const SizedBox(height: 28),
+                          ],
+                          _buildFaqList(),
+                          const SizedBox(height: 28),
+                          _buildAssistanceCard(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -267,7 +273,8 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
           spacing: 12,
           runSpacing: 12,
           children: List.generate(_categories.length, (i) {
-            final cat = _categories[i];
+            final cat = _categories[i] is Map ? _categories[i] as Map : {};
+            final label = cat['name'] ?? 'Category';
             final active = _activeCategoryIndex == i;
             return GestureDetector(
               onTap: () => setState(() => _activeCategoryIndex = i),
@@ -311,14 +318,14 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
                               ],
                       ),
                       child: Icon(
-                        cat.icon,
+                        Icons.help_outline,
                         color: active ? Colors.white : AppTheme.secondary,
                         size: 24,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      cat.label,
+                      label,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -437,18 +444,6 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
       ),
     );
   }
-}
-
-class _Category {
-  final IconData icon;
-  final String label;
-  const _Category({required this.icon, required this.label});
-}
-
-class _FaqItem {
-  final String q;
-  final String a;
-  const _FaqItem({required this.q, required this.a});
 }
 
 class _FaqTile extends StatefulWidget {

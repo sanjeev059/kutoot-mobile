@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -11,12 +12,67 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _api = KutootApi();
+  List<dynamic> _notifications = [];
+  bool _loading = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _load();
   }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait([
+        _api.getNotifications().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getUnreadNotificationCount().then<dynamic>((r) => r).catchError((_) => null),
+      ]);
+      if (mounted) {
+        if (results[0] != null && results[0]!.data is Map) {
+          final d = (results[0]!.data as Map)['data'];
+          _notifications = d is List ? d : [];
+        }
+        if (results[1] != null && results[1]!.data is Map) {
+          final d = (results[1]!.data as Map)['data'];
+          _unreadCount = d is Map ? (d['count'] ?? d['unread_count'] ?? 0) : (d is int ? d : 0);
+        }
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _markRead(dynamic id) async {
+    try {
+      final nid = id is int ? id : int.tryParse(id.toString()) ?? 0;
+      await _api.markNotificationRead(nid);
+      _load();
+    } catch (_) {}
+  }
+
+  Future<void> _markAllRead() async {
+    try {
+      await _api.markAllNotificationsRead();
+      _load();
+    } catch (_) {}
+  }
+
+  List<dynamic> get _personalNotifications =>
+      _notifications.where((n) {
+        final type = (n is Map ? n['type'] ?? '' : '').toString().toLowerCase();
+        return type != 'system';
+      }).toList();
+
+  List<dynamic> get _systemNotifications =>
+      _notifications.where((n) {
+        final type = (n is Map ? n['type'] ?? '' : '').toString().toLowerCase();
+        return type == 'system';
+      }).toList();
 
   @override
   void dispose() {
@@ -35,6 +91,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             style: TextStyle(
                 color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         foregroundColor: AppTheme.textPrimary,
+        actions: [
+          if (_unreadCount > 0)
+            TextButton(
+              onPressed: _markAllRead,
+              child: const Text('Mark all read', style: TextStyle(fontSize: 12)),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primary,
@@ -46,13 +109,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _NotificationList(items: _personalNotifications),
-          _NotificationList(items: _systemNotifications),
-        ],
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _NotificationList(items: _personalNotifications, onTap: _markRead),
+                  _NotificationList(items: _systemNotifications, onTap: _markRead),
+                ],
+              ),
+            ),
     );
   }
 
@@ -107,9 +175,19 @@ class _NotificationItem {
 }
 
 class _NotificationList extends StatelessWidget {
-  final List<_NotificationItem> items;
+  final List<dynamic> items;
+  final void Function(dynamic id) onTap;
 
-  const _NotificationList({required this.items});
+  const _NotificationList({required this.items, required this.onTap});
+
+  IconData _iconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'promo': return Icons.local_offer_rounded;
+      case 'system': return Icons.info_outline_rounded;
+      case 'reward': return Icons.card_giftcard_rounded;
+      default: return Icons.star_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

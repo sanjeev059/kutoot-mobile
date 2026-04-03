@@ -35,8 +35,8 @@ class _DealsScreenState extends State<DealsScreen> {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        _api.getFeaturedBanners().catchError((_) => null),
-        _api.getMerchantLocations().catchError((_) => null),
+        _api.getFeaturedBanners().then<dynamic>((r) => r).catchError((_) => null),
+        _api.getMerchantLocations().then<dynamic>((r) => r).catchError((_) => null),
       ]);
       if (mounted) {
         if (results[0] != null &&

@@ -1,9 +1,53 @@
 import 'package:flutter/material.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'submit_ticket_screen.dart';
 
-class SupportTicketHistoryScreen extends StatelessWidget {
+class SupportTicketHistoryScreen extends StatefulWidget {
   const SupportTicketHistoryScreen({super.key});
+
+  @override
+  State<SupportTicketHistoryScreen> createState() => _SupportTicketHistoryScreenState();
+}
+
+class _SupportTicketHistoryScreenState extends State<SupportTicketHistoryScreen> {
+  final _api = KutootApi();
+  List<Map<String, dynamic>> _tickets = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTickets();
+  }
+
+  Future<void> _loadTickets() async {
+    try {
+      final res = await _api.getSupportTickets();
+      if (mounted && res.data is Map) {
+        final d = (res.data as Map)['data'];
+        setState(() {
+          _tickets = (d is List ? d : []).map((t) => Map<String, dynamic>.from(t is Map ? t : {})).toList();
+          _loading = false;
+        });
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+      case 'closed':
+        return const Color(0xFF2E7D32);
+      case 'pending':
+      case 'open':
+        return const Color(0xFFBA1A1A);
+      default:
+        return const Color(0xFFEA6B1E);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,14 +113,10 @@ class SupportTicketHistoryScreen extends StatelessWidget {
                       MaterialPageRoute(
                           builder: (_) => const SubmitTicketScreen()),
                     ),
-                    child: const Text('Create New Ticket'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

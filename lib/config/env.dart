@@ -2,7 +2,7 @@
 class Env {
   static const String apiBaseUrl = String.fromEnvironment(
     'KUTOOT_API_URL',
-    defaultValue: 'https://dev.kutoot.com/api/v1',
+    defaultValue: 'https://dev.kutoot.com/api/mobile',
   );
 
   static const String appName = 'Kutoot';
