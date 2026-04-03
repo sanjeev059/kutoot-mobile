@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -220,7 +221,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       ),
                     ],
                   ),
-                  if (_debugOtp != null)
+                  if (kDebugMode && _debugOtp != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Container(

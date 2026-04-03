@@ -210,6 +210,13 @@ class _CampaignHeader extends StatelessWidget {
       color: Colors.white.withValues(alpha: 0.92),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+          const SizedBox(width: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -479,7 +486,7 @@ class _CampaignTicket extends StatelessWidget {
                           letterSpacing: 1.1,
                         ),
                       ),
-                      child: const Text('My Stamps'),
+                      child: const Text('ENTER VIA APP TASKS'),
                     ),
                   ),
                 ],

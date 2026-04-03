@@ -449,40 +449,45 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
         child: Column(
           children: [
             _HomeTopBar(
-              left: InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Location settings coming soon')),
-                  );
-                },
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondary.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(999),
-                    border:
-                        Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+              left: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: AppTheme.textPrimary),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.location_on,
-                          size: 15, color: AppTheme.secondary),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${widget.cityName} ▾',
-                        style: const TextStyle(
-                          color: AppTheme.secondary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
+                  const SizedBox(width: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.secondary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                          color: AppTheme.secondary.withOpacity(0.20)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on,
+                            size: 15, color: AppTheme.secondary),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${widget.cityName} ▾',
+                          style: const TextStyle(
+                            color: AppTheme.secondary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
               rightLabel: 'UPGRADE',
               onRightTap: () => Navigator.push(

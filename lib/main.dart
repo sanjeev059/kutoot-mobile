@@ -19,7 +19,9 @@ void main() {
   runZonedGuarded(() {
     runApp(const KutootApp());
   }, (error, stack) {
-    debugPrint('Uncaught error: $error\n$stack');
+    if (kDebugMode) {
+      debugPrint('Uncaught error: $error\n$stack');
+    }
   });
 }
 

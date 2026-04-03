@@ -62,9 +62,15 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               child: Row(
                 children: [
+                  if (Navigator.of(context).canPop())
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back,
+                          color: AppTheme.textPrimary),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   Image.asset(
                     _logoAsset,
                     width: 32,

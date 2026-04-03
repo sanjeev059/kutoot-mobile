@@ -262,6 +262,13 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         child: Row(
           children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+              onPressed: () => Navigator.of(context).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            ),
+            const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
