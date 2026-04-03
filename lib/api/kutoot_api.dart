@@ -2,13 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/env.dart';
 
-/// Kutoot API client - mirrors kutootApi.js
+/// Kutoot API client — production endpoints under /api/mobile
 class KutootApi {
   static final KutootApi _instance = KutootApi._();
   factory KutootApi() => _instance;
 
   late final Dio _dio;
-  // encryptedSharedPreferences: false avoids release-build crashes on some Android devices
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: false),
   );
@@ -32,9 +31,7 @@ class KutootApi {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-        } catch (_) {
-          // Storage may fail on some devices; proceed without token
-        }
+        } catch (_) {}
         return handler.next(options);
       },
       onError: (err, handler) async {
@@ -69,29 +66,17 @@ class KutootApi {
   Future<Response> register(Map<String, dynamic> data) =>
       _dio.post('/auth/register', data: data);
 
-  Future<Response> forgotPassword(String email) =>
-      _dio.post('/auth/forgot-password', data: {'email': email});
-
   Future<Response> sendOtp(String identifier) =>
       _dio.post('/auth/send-otp', data: {'identifier': identifier});
 
-  Future<Response> verifyOtp(String identifier, String otp) =>
-      _dio.post('/auth/verify-otp', data: {'identifier': identifier, 'otp': otp});
-
   Future<Response> verifyOtp(String identifier, String otp,
           {String deviceName = 'flutter-app'}) =>
-      _dio.post('/auth/otp/verify', data: {
-        'identifier': identifier,
-        'otp': otp,
-        'device_name': deviceName,
-      });
-
-  Future<Response> socialLogin(Map<String, dynamic> data) =>
-      _dio.post('/auth/social-login', data: data);
-
-  Future<Response> getMe() => _dio.get('/auth/me');
+      _dio.post('/auth/verify-otp',
+          data: {'identifier': identifier, 'otp': otp});
 
   Future<Response> getUser() => _dio.get('/auth/me');
+
+  Future<Response> getMe() => _dio.get('/auth/me');
 
   Future<Response> logout() => _dio.post('/auth/logout');
 
@@ -117,6 +102,9 @@ class KutootApi {
 
   Future<Response> deleteAvatar() => _dio.delete('/profile/avatar');
 
+  Future<Response> getProfileCampaignEntries() =>
+      _dio.get('/profile/campaign-entries');
+
   // ─── Stores (Merchant Locations) ──────────────────────────────────
   Future<Response> getStores({Map<String, dynamic>? params}) =>
       _dio.get('/stores', queryParameters: params);
@@ -126,26 +114,35 @@ class KutootApi {
   Future<Response> getNearbyStores(Map<String, dynamic> params) =>
       _dio.get('/stores/nearby', queryParameters: params);
 
-  Future<Response> getStoreCategories() => _dio.get('/store-categories');
+  Future<Response> getStoreCategories({Map<String, dynamic>? params}) =>
+      _dio.get('/store-categories', queryParameters: params);
 
   Future<Response> getMerchantLocations({Map<String, dynamic>? params}) =>
       _dio.get('/stores', queryParameters: params);
 
-  Future<Response> getStoresByCategory(int categoryId, {Map<String, dynamic>? params}) =>
-      _dio.get('/stores', queryParameters: {'category_id': categoryId, ...?params});
+  Future<Response> getStoresByCategory(int categoryId,
+          {Map<String, dynamic>? params}) =>
+      _dio.get('/stores',
+          queryParameters: {'category_id': categoryId, ...?params});
 
-  // ─── Campaigns (Rewards) ──────────────────────────────────────────
+  // ─── Campaigns ────────────────────────────────────────────────────
   Future<Response> getCampaigns({Map<String, dynamic>? params}) =>
       _dio.get('/campaigns', queryParameters: params);
 
   Future<Response> getCampaign(int id) => _dio.get('/campaigns/$id');
+
+  Future<Response> getCampaignProgress(int id) =>
+      _dio.get('/campaigns/$id/progress');
 
   Future<Response> getCampaignBounty(int id) =>
       _dio.get('/campaigns/$id/bounty');
 
   Future<Response> participateInCampaign(int id,
           {String mode = 'engagement'}) =>
-      _dio.post('/campaigns/$id/participate', data: {'entry_mode': mode});
+      _dio.post('/campaigns/$id/participate');
+
+  Future<Response> getMyCampaigns({Map<String, dynamic>? params}) =>
+      _dio.get('/my-campaigns', queryParameters: params);
 
   // ─── Coupons ──────────────────────────────────────────────────────
   Future<Response> getCoupons({Map<String, dynamic>? params}) =>
@@ -156,35 +153,28 @@ class KutootApi {
   Future<Response> redeemCoupon(int couponId, [Map<String, dynamic>? data]) =>
       _dio.post('/coupons/$couponId/redeem', data: data);
 
+  Future<Response> getMyCoupons({Map<String, dynamic>? params}) =>
+      _dio.get('/my-coupons', queryParameters: params);
+
   Future<Response> calculateRedemption(Map<String, dynamic> data) =>
       _dio.post('/coupons/calculate', data: data);
-
-  Future<Response> verifyPayment(Map<String, dynamic> data) =>
-      _dio.post('/coupons/verify-payment', data: data);
-
-  Future<Response> payWithoutCoupon(Map<String, dynamic> data) =>
-      _dio.post('/coupons/pay-without-coupon', data: data);
 
   // ─── Stamps ───────────────────────────────────────────────────────
   Future<Response> getStamps({Map<String, dynamic>? params}) =>
       _dio.get('/stamps', queryParameters: params);
 
+  Future<Response> getStampHistory({Map<String, dynamic>? params}) =>
+      _dio.get('/stamps/history', queryParameters: params);
+
   Future<Response> reserveStamp(int campaignId) =>
       _dio.post('/stamps/reserve', data: {'campaign_id': campaignId});
 
-  Future<Response> getStampReservation(int stampId) =>
-      _dio.get('/stamps/reservation/$stampId');
-
   Future<Response> createStampReservationOrder(int stampId, int planId) =>
-      _dio.post('/stamps/reservation/$stampId/create-order',
-          data: {'plan_id': planId});
+      _dio.post('/stamps/$stampId/order', data: {'plan_id': planId});
 
   Future<Response> confirmStampReservation(
           int stampId, Map<String, dynamic> data) =>
-      _dio.post('/stamps/reservation/$stampId/confirm', data: data);
-
-  Future<Response> cancelStampReservation(int stampId) =>
-      _dio.delete('/stamps/reservation/$stampId');
+      _dio.post('/stamps/$stampId/confirm', data: data);
 
   // ─── Subscriptions ────────────────────────────────────────────────
   Future<Response> getSubscriptionPlans() => _dio.get('/subscriptions/plans');
@@ -192,13 +182,12 @@ class KutootApi {
   Future<Response> getCurrentSubscription() =>
       _dio.get('/subscriptions/current');
 
+  Future<Response> subscribe(Map<String, dynamic> data) =>
+      _dio.post('/subscriptions/subscribe', data: data);
+
   Future<Response> upgradeSubscription(int planId,
           {List<int>? campaignSelections}) =>
-      _dio.post('/subscriptions/upgrade', data: {
-        'plan_id': planId,
-        'campaign_selections': campaignSelections ?? [],
-        'accepted_terms': true,
-      });
+      _dio.post('/subscriptions/$planId/upgrade');
 
   Future<Response> verifySubscriptionPayment(Map<String, dynamic> data) =>
       _dio.post('/subscriptions/verify-payment', data: data);
@@ -206,17 +195,10 @@ class KutootApi {
   Future<Response> recordSubscriptionConsent(int planId) =>
       _dio.post('/subscriptions/$planId/consent');
 
-  Future<Response> upgradeSubscription(int planId) =>
-      _dio.post('/subscriptions/$planId/upgrade');
-
   Future<Response> getAvailableCampaigns() => _dio.get('/campaigns');
 
   Future<Response> setPrimaryCampaign(int campaignId) =>
-      _dio.post('/subscriptions/primary-campaign',
-          data: {'campaign_id': campaignId});
-
-  Future<Response> getAvailableCampaigns() =>
-      _dio.get('/subscriptions/available-campaigns');
+      _dio.post('/campaigns/$campaignId/primary');
 
   // ─── Transactions ───────────────────────────────────────────────
   Future<Response> getTransactions({Map<String, dynamic>? params}) =>
@@ -269,38 +251,6 @@ class KutootApi {
   Future<Response> verifyPayment(Map<String, dynamic> data) =>
       _dio.post('/payments/verify', data: data);
 
-  // ─── Profile ──────────────────────────────────────────────────────
-  Future<Response> getProfileCampaignEntries() =>
-      _dio.get('/profile/campaign-entries');
-
-  Future<Response> updateProfile(Map<String, dynamic> data) =>
-      _dio.patch('/profile', data: data);
-
-  // ─── Merchant Locations (Stores) ──────────────────────────────────
-  Future<Response> getMerchantLocations({Map<String, dynamic>? params}) =>
-      _dio.get('/merchant-locations', queryParameters: params);
-
-  Future<Response> getStoreCategories({Map<String, dynamic>? params}) =>
-      _dio.get('/merchant-locations/store-categories', queryParameters: params);
-
-  Future<Response> getStoresByCategory(int categoryId,
-          {Map<String, dynamic>? params}) =>
-      _dio.get('/store-categories/$categoryId/stores', queryParameters: params);
-
-  // ─── Marketing (public) ───────────────────────────────────────────
-  Future<Response> getMarketingBanners({Map<String, dynamic>? params}) =>
-      _dio.get('/marketing-banners', queryParameters: params);
-
-  Future<Response> getStoreBanners({Map<String, dynamic>? params}) =>
-      _dio.get('/store-banners', queryParameters: params);
-
-  Future<Response> getFeaturedBanners({Map<String, dynamic>? params}) =>
-      _dio.get('/featured-banners', queryParameters: params);
-
-  Future<Response> getHeroSettings({String? locale}) =>
-      _dio.get('/hero-settings',
-          queryParameters: locale != null ? {'locale': locale} : null);
-
   // ─── QR Scan ──────────────────────────────────────────────────────
   Future<Response> scanQr(String qrCode) =>
       _dio.post('/qr/scan', data: {'qr_code': qrCode});
@@ -308,11 +258,18 @@ class KutootApi {
   // ─── Content (Banners, News, Partners, Deals) ─────────────────────
   Future<Response> getBanners() => _dio.get('/banners');
 
-  Future<Response> getFeaturedBanners() => _dio.get('/banners');
+  Future<Response> getMarketingBanners({Map<String, dynamic>? params}) =>
+      _dio.get('/banners', queryParameters: params);
 
-  Future<Response> getMarketingBanners() => _dio.get('/banners');
+  Future<Response> getStoreBanners({Map<String, dynamic>? params}) =>
+      _dio.get('/banners', queryParameters: params);
 
-  Future<Response> getStoreBanners() => _dio.get('/banners');
+  Future<Response> getFeaturedBanners({Map<String, dynamic>? params}) =>
+      _dio.get('/banners', queryParameters: params);
+
+  Future<Response> getHeroSettings({String? locale}) =>
+      _dio.get('/hero-settings',
+          queryParameters: locale != null ? {'locale': locale} : null);
 
   Future<Response> getNews() => _dio.get('/news');
 
@@ -327,115 +284,4 @@ class KutootApi {
 
   Future<Response> acceptTerms(int version) =>
       _dio.post('/terms/accept', data: {'version': version});
-
-    // ─── Mobile Resource APIs ───────────────────────────────────────
-    Future<Response> getAdminFaqCategories({Map<String, dynamic>? params}) =>
-      _dio.get('/faq-categories', queryParameters: params);
-
-    Future<Response> getAdminFaqCategory(int id) =>
-      _dio.get('/faq-categories/$id');
-
-    Future<Response> createAdminFaqCategory(Map<String, dynamic> data) =>
-      _dio.post('/faq-categories', data: data);
-
-    Future<Response> updateAdminFaqCategory(int id, Map<String, dynamic> data) =>
-      _dio.put('/faq-categories/$id', data: data);
-
-    Future<Response> deleteAdminFaqCategory(int id) =>
-      _dio.delete('/faq-categories/$id');
-
-    Future<Response> getAdminFaqs({Map<String, dynamic>? params}) =>
-      _dio.get('/faqs', queryParameters: params);
-
-    Future<Response> getAdminFaq(int id) => _dio.get('/faqs/$id');
-
-    Future<Response> createAdminFaq(Map<String, dynamic> data) =>
-      _dio.post('/faqs', data: data);
-
-    Future<Response> updateAdminFaq(int id, Map<String, dynamic> data) =>
-      _dio.put('/faqs/$id', data: data);
-
-    Future<Response> deleteAdminFaq(int id) => _dio.delete('/faqs/$id');
-
-    Future<Response> getAdminNotifications({Map<String, dynamic>? params}) =>
-      _dio.get('/notifications', queryParameters: params);
-
-    Future<Response> getAdminNotification(int id) =>
-      _dio.get('/notifications/$id');
-
-    Future<Response> createAdminNotification(Map<String, dynamic> data) =>
-      _dio.post('/notifications', data: data);
-
-    Future<Response> broadcastAdminNotification(Map<String, dynamic> data) =>
-      _dio.post('/notifications/broadcast', data: data);
-
-    Future<Response> deleteAdminNotification(int id) =>
-      _dio.delete('/notifications/$id');
-
-    Future<Response> getAdminSupportTicketCategories({Map<String, dynamic>? params}) =>
-      _dio.get('/support-ticket-categories', queryParameters: params);
-
-    Future<Response> getAdminSupportTicketCategory(int id) =>
-      _dio.get('/support-ticket-categories/$id');
-
-    Future<Response> createAdminSupportTicketCategory(Map<String, dynamic> data) =>
-      _dio.post('/support-ticket-categories', data: data);
-
-    Future<Response> updateAdminSupportTicketCategory(int id, Map<String, dynamic> data) =>
-      _dio.put('/support-ticket-categories/$id', data: data);
-
-    Future<Response> deleteAdminSupportTicketCategory(int id) =>
-      _dio.delete('/support-ticket-categories/$id');
-
-    Future<Response> getAdminSupportTickets({Map<String, dynamic>? params}) =>
-      _dio.get('/support-tickets', queryParameters: params);
-
-    Future<Response> getAdminSupportTicket(int id) =>
-      _dio.get('/support-tickets/$id');
-
-    Future<Response> updateAdminSupportTicket(int id, Map<String, dynamic> data) =>
-      _dio.put('/support-tickets/$id', data: data);
-
-    Future<Response> replyAdminSupportTicket(int id, Map<String, dynamic> data) =>
-      _dio.post('/support-tickets/$id/reply', data: data);
-
-    Future<Response> deleteAdminSupportTicket(int id) =>
-      _dio.delete('/support-tickets/$id');
-
-    Future<Response> getAdminOnboardingPages({Map<String, dynamic>? params}) =>
-      _dio.get('/onboarding-pages', queryParameters: params);
-
-    Future<Response> getAdminOnboardingPage(int id) =>
-      _dio.get('/onboarding-pages/$id');
-
-    Future<Response> createAdminOnboardingPage(FormData data) =>
-      _dio.post('/onboarding-pages', data: data);
-
-    Future<Response> updateAdminOnboardingPage(int id, FormData data) =>
-        _dio.put('/onboarding-pages/$id', data: data);
-
-    Future<Response> reorderAdminOnboardingPages(List<Map<String, dynamic>> pages) =>
-      _dio.post('/onboarding-pages/reorder', data: {'pages': pages});
-
-    Future<Response> deleteAdminOnboardingPage(int id) =>
-      _dio.delete('/onboarding-pages/$id');
-
-    Future<Response> getAdminReferrals({Map<String, dynamic>? params}) =>
-      _dio.get('/referrals', queryParameters: params);
-
-    Future<Response> getAdminReferral(int id) => _dio.get('/referrals/$id');
-
-    Future<Response> getAdminAppConfigs({Map<String, dynamic>? params}) =>
-      _dio.get('/app-configs', queryParameters: params);
-
-    Future<Response> getAdminAppConfig(int id) => _dio.get('/app-configs/$id');
-
-    Future<Response> createAdminAppConfig(Map<String, dynamic> data) =>
-      _dio.post('/app-configs', data: data);
-
-    Future<Response> updateAdminAppConfig(int id, Map<String, dynamic> data) =>
-      _dio.put('/app-configs/$id', data: data);
-
-    Future<Response> deleteAdminAppConfig(int id) =>
-      _dio.delete('/app-configs/$id');
 }

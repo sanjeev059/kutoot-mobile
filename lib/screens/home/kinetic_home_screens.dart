@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../services/api_data_service.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/image_utils.dart';
 import '../auth/login_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../plans/plans_screen.dart';
@@ -599,19 +598,6 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
       ),
     );
   }
-
-  Widget _buildGridSkeletons() => GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 4,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.62,
-        ),
-        itemBuilder: (_, __) => const _SkeletonBox(height: 250, borderRadius: 16),
-      );
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -645,174 +631,6 @@ class _HomeBody extends StatelessWidget {
     this.onSearchChanged,
     this.onRefresh,
   });
-
-  @override
-  State<_HomeBody> createState() => _HomeBodyState();
-}
-
-class _HomeBodyState extends State<_HomeBody> {
-  final _api = KutootApi();
-  List<Map<String, dynamic>> _banners = [];
-  List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _stores = [];
-  List<Map<String, dynamic>> _searchResults = [];
-  int _activeCategory = 0;
-  bool _loading = true;
-  bool _searching = false;
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAll();
-  }
-
-  @override
-  void dispose() {
-    _searchDebounce?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadAll() async {
-    if (!mounted) return;
-    setState(() => _loading = true);
-    try {
-      final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-      // Fire all requests in parallel for speed
-      final results = await Future.wait([
-        isLoggedIn
-            ? _api.getBanners().catchError((_) => null)
-            : Future.value(null),
-        _api.getStoreCategories().catchError((_) => null),
-        isLoggedIn
-            ? _api.getStores(params: {'per_page': 10}).catchError((_) => null)
-            : Future.value(null),
-      ]);
-
-      // Banners: {data: {featured: [], marketing: [], store: []}}
-      List<Map<String, dynamic>> banners = [];
-      if (results[0] != null) {
-        final wrapper = results[0]?.data;
-        if (wrapper is Map) {
-          final data = wrapper['data'];
-          if (data is Map) {
-            for (final key in ['featured', 'marketing', 'store']) {
-              final list = data[key];
-              if (list is List) {
-                banners.addAll(list
-                    .whereType<Map>()
-                    .map((m) => Map<String, dynamic>.from(m)));
-              }
-            }
-          }
-        }
-      }
-
-      // Categories
-      List<dynamic> cats = _extractList(results[1]?.data);
-
-      // Stores
-      List<dynamic> stores = _extractList(results[2]?.data);
-
-      if (mounted) {
-        setState(() {
-          _banners = banners;
-          _categories = cats.map(_toMap).toList();
-          _stores = stores.map(_toMap).toList();
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
-    _searchQuery = query;
-    if (query.isEmpty) {
-      setState(() {
-        _searching = false;
-        _searchResults = [];
-      });
-      return;
-    }
-    setState(() => _searching = true);
-    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
-      if (!mounted || _searchQuery != query) return;
-      try {
-        final res = await _api
-            .getStores(params: {'search': query, 'per_page': 15});
-        final stores = _extractList(res.data);
-        if (mounted && _searchQuery == query) {
-          setState(() {
-            _searchResults = stores.map(_toMap).toList();
-            _searching = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _searching = false);
-      }
-    });
-  }
-
-  void _onCategoryTap(int idx) {
-    setState(() => _activeCategory = idx);
-    if (idx == 0) {
-      _loadAll();
-      return;
-    }
-    final catId = _categories[idx - 1]['id']; // offset by 1 for ALL
-    setState(() => _loading = true);
-    _api
-        .getStores(params: {'category_id': catId, 'per_page': 10})
-        .then((res) {
-      final stores = _extractList(res.data);
-      if (mounted) {
-        setState(() {
-          _stores = stores.map(_toMap).toList();
-          _loading = false;
-        });
-      }
-    }).catchError((_) {
-      if (mounted) setState(() => _loading = false);
-    });
-  }
-
-  IconData _categoryIcon(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('food') || n.contains('restaurant')) {
-      return Icons.restaurant_rounded;
-    }
-    if (n.contains('fashion') || n.contains('cloth')) return Icons.checkroom;
-    if (n.contains('electronic') || n.contains('tech')) {
-      return Icons.devices_other;
-    }
-    if (n.contains('home') || n.contains('furniture')) return Icons.chair;
-    if (n.contains('beauty') || n.contains('salon') || n.contains('spa')) {
-      return Icons.spa_rounded;
-    }
-    if (n.contains('coffee') || n.contains('cafe')) {
-      return Icons.coffee_rounded;
-    }
-    if (n.contains('retail') || n.contains('shop')) {
-      return Icons.shopping_bag_rounded;
-    }
-    return Icons.grid_view;
-  }
-
-  Color _categoryColor(int i) {
-    const colors = [
-      AppTheme.primary,
-      AppTheme.secondary,
-      Color(0xFF6C63FF),
-      Color(0xFFF2DCE3),
-      Color(0xFF2DBDB5),
-      Color(0xFFF4A261),
-    ];
-    return colors[i % colors.length];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1036,7 +854,7 @@ class _HomeTopBar extends StatelessWidget {
   }
 }
 
-class _InteractiveSearchBar extends StatefulWidget {
+class _SearchBar extends StatelessWidget {
   final String hint;
   final ValueChanged<String>? onChanged;
   const _SearchBar({required this.hint, this.onChanged});
@@ -1069,55 +887,7 @@ class _InteractiveSearchBar extends StatefulWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.search_rounded,
-              color: _focused
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 22,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                onChanged: (v) {
-                  widget.onChanged(v);
-                  setState(() {});
-                },
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: widget.hint,
-                  hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                    fontWeight: FontWeight.w400,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  isDense: true,
-                ),
-              ),
-            ),
-            if (_controller.text.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  _controller.clear();
-                  widget.onChanged('');
-                  setState(() {});
-                },
-                child: Icon(
-                  Icons.close_rounded,
-                  color: theme.colorScheme.onSurfaceVariant,
-                  size: 20,
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1187,7 +957,6 @@ class _CategoryBubble extends StatelessWidget {
   final bool selected;
   final Color color;
   final VoidCallback onTap;
-  final IconData icon;
 
   const _CategoryBubble(
       {required this.label,
@@ -1213,7 +982,7 @@ class _CategoryBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconColor =
-        color.computeLuminance() > 0.5 ? AppTheme.primary : Colors.white;
+        label == 'ALL' || label == 'HOME' ? AppTheme.primary : Colors.white;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -1285,7 +1054,7 @@ class _StoreCardCompact extends StatelessWidget {
                     end: Alignment.topCenter,
                     colors: [
                       Colors.black.withOpacity(0.88),
-                      Colors.transparent,
+                      Colors.transparent
                     ],
                   ),
                 ),
@@ -1322,8 +1091,7 @@ class _StoreCardCompact extends StatelessWidget {
                     Row(
                       children: [
                         const Icon(Icons.star,
-                            size: 13,
-                            color: AppTheme.tertiaryContainer),
+                            size: 13, color: AppTheme.tertiaryContainer),
                         Text(
                           ' $rating${distance.isNotEmpty ? "  • $distance" : ""}',
                           style: const TextStyle(
@@ -1342,23 +1110,6 @@ class _StoreCardCompact extends StatelessWidget {
       ),
     );
   }
-
-  static Widget _storePlaceholder(String name) => Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primary.withOpacity(0.3),
-              AppTheme.primary.withOpacity(0.6),
-            ],
-          ),
-        ),
-        child: Center(
-          child: Icon(Icons.store_rounded,
-              color: Colors.white.withOpacity(0.7), size: 40),
-        ),
-      );
 }
 
 class _StoreCardLarge extends StatelessWidget {
@@ -1390,8 +1141,8 @@ class _StoreCardLarge extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -1500,92 +1251,6 @@ class _StoreCardLarge extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StoreListTile extends StatelessWidget {
-  final Map<String, dynamic> store;
-  const _StoreListTile({required this.store});
-
-  @override
-  Widget build(BuildContext context) {
-    final name = _storeName(store);
-    final rating = _storeRating(store);
-    final imgUrl = _storeImage(store);
-    final category = _storeCategory(store);
-
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => StoreProfileScreen(store: store)),
-      ),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: imgUrl != null && imgUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: imgUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                            color: AppTheme.primary.withOpacity(0.1)),
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppTheme.primary.withOpacity(0.1),
-                          child: const Icon(Icons.store_rounded,
-                              color: AppTheme.primary),
-                        ),
-                      )
-                    : Container(
-                        color: AppTheme.primary.withOpacity(0.1),
-                        child: const Icon(Icons.store_rounded,
-                            color: AppTheme.primary),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
-                  if (category.isNotEmpty)
-                    Text(category,
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star,
-                    size: 14, color: AppTheme.tertiaryContainer),
-                const SizedBox(width: 2),
-                Text(rating,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 13)),
-              ],
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, color: Colors.grey),
           ],
         ),
       ),

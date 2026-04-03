@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import 'ticket_submitted_screen.dart';
 
@@ -11,61 +10,10 @@ class SubmitTicketScreen extends StatefulWidget {
 }
 
 class _SubmitTicketScreenState extends State<SubmitTicketScreen> {
-  final _api = KutootApi();
   final _subjectController = TextEditingController();
   final _descriptionController = TextEditingController();
-  List<dynamic> _categories = [];
-  int? _selectedCategoryId;
-  bool _loadingCategories = true;
-  bool _submitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCategories();
-  }
-
-  Future<void> _loadCategories() async {
-    try {
-      final res = await _api.getSupportCategories();
-      if (mounted && res.data is Map) {
-        final d = (res.data as Map)['data'];
-        setState(() {
-          _categories = d is List ? d : [];
-          _loadingCategories = false;
-        });
-        return;
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _loadingCategories = false);
-  }
-
-  Future<void> _submit() async {
-    if (_subjectController.text.isEmpty || _descriptionController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in subject and description')),
-      );
-      return;
-    }
-    setState(() => _submitting = true);
-    try {
-      await _api.createSupportTicket({
-        'subject': _subjectController.text,
-        'description': _descriptionController.text,
-        if (_selectedCategoryId != null) 'support_ticket_category_id': _selectedCategoryId,
-      });
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TicketSubmittedScreen()));
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit ticket: $e')),
-        );
-      }
-    }
-  }
+  String _category = 'General';
+  String _orderId = 'Select order';
 
   @override
   void dispose() {

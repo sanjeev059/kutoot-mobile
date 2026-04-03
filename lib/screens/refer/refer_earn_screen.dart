@@ -1,49 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 
-class ReferEarnScreen extends StatefulWidget {
+class ReferEarnScreen extends StatelessWidget {
   const ReferEarnScreen({super.key});
 
   @override
-  State<ReferEarnScreen> createState() => _ReferEarnScreenState();
-}
-
-class _ReferEarnScreenState extends State<ReferEarnScreen> {
-  final _api = KutootApi();
-  String _referralCode = '';
-  int _rewardPoints = 0;
-  int _totalReferrals = 0;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadReferral();
-  }
-
-  Future<void> _loadReferral() async {
-    try {
-      final res = await _api.getReferralInfo();
-      if (mounted && res.data is Map) {
-        final d = (res.data as Map)['data'] ?? res.data;
-        if (d is Map) {
-          setState(() {
-            _referralCode = (d['referral_code'] ?? '').toString();
-            _rewardPoints = d['reward_points'] is int ? d['reward_points'] : int.tryParse(d['reward_points'].toString()) ?? 0;
-            _totalReferrals = d['total_referrals'] is int ? d['total_referrals'] : int.tryParse(d['total_referrals'].toString()) ?? 0;
-            _loading = false;
-          });
-          return;
-        }
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    const referralCode = 'KUT00750';
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -146,6 +111,7 @@ class _ReferEarnScreenState extends State<ReferEarnScreen> {
 class _StepRow extends StatelessWidget {
   final int step;
   final String text;
+
   const _StepRow({required this.step, required this.text});
 
   @override

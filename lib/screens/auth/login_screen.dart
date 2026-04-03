@@ -17,7 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   static const String _logoAsset = 'assets/images/k_logo.png';
 
   final TextEditingController _mobileController = TextEditingController();
-  bool _sending = false;
 
   String get _digits => _mobileController.text.replaceAll(RegExp(r'\D'), '');
   bool get _valid => _digits.length == 10;

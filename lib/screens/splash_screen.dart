@@ -28,9 +28,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
-      // Check auth and location in parallel for speed
-      final results = await Future.wait([
-        auth.checkAuth().then((_) => null),
+      await Future.wait([
+        auth.checkAuth(),
         Future<void>.delayed(const Duration(milliseconds: 3500)),
       ]);
       if (!mounted) return;
@@ -38,16 +37,12 @@ class _SplashScreenState extends State<SplashScreen>
       final city = await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
 
-      final auth = context.read<AuthProvider>();
-      await auth.checkAuth();
-      if (!mounted) return;
-
-      final Widget home = auth.isLoggedIn
+      final Widget destination = auth.isLoggedIn
           ? LoggedInHomeScreen(cityName: city)
           : GuestHomeScreen(cityName: city);
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => home),
+        MaterialPageRoute(builder: (_) => destination),
       );
     });
   }
@@ -109,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 22),
                 const Text(
-                  'FUTURE OF LOCAL COMMERCE',
+                  'THE CULINARY CURATOR',
                   style: TextStyle(
                     color: Color(0xFF2D2927),
                     fontSize: 9.8,
