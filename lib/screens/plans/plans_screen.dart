@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/api_data_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/premium_widgets.dart';
 import '../payment/plan_payment_flow_screen.dart';
 import '../qr/qr_scan_screen.dart';
 import '../../widgets/kutoot_bottom_nav.dart';
@@ -174,7 +175,7 @@ class _PlansScreenState extends State<PlansScreen> {
             const SizedBox(height: 8),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const _PlansShimmer()
                   : RefreshIndicator(
                       onRefresh: () async {
                         await _loadCurrentPlan();
@@ -672,3 +673,21 @@ const List<_PlanData> _fallbackPlans = [
     gradient: [Color(0xFF221A14), Color(0xFF3B322B)],
   ),
 ];
+
+class _PlansShimmer extends StatelessWidget {
+  const _PlansShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        ShimmerBox(width: double.infinity, height: 200, radius: 20),
+        SizedBox(height: 16),
+        ShimmerBox(width: double.infinity, height: 200, radius: 20),
+        SizedBox(height: 16),
+        ShimmerBox(width: double.infinity, height: 200, radius: 20),
+      ],
+    );
+  }
+}

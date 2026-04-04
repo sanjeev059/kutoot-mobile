@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../api/kutoot_api.dart';
+import '../../providers/settings_provider.dart';
 import '../../services/campaign_entry_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
@@ -179,6 +181,75 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          Consumer<SettingsProvider>(
+            builder: (context, settings, _) {
+              final isDark = settings.darkMode;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2A2A2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFF5F0EC),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isDark
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
+                        color: isDark ? Colors.amber : AppTheme.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Dark Mode',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: isDark ? Colors.white : AppTheme.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            isDark ? 'On' : 'Off',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: isDark,
+                      onChanged: (v) => settings.setDarkMode(v),
+                      activeColor: AppTheme.primary,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           _ActionTile(

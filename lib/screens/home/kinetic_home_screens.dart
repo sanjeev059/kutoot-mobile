@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/api_data_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/campaign_preview_sheet.dart';
+import '../../widgets/premium_widgets.dart';
 import '../auth/login_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -213,7 +216,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const _HomeShimmer()
                   : _HomeBody(
                       cityName: widget.cityName,
                       isGuest: true,
@@ -423,7 +426,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const _HomeShimmer()
                   : _HomeBody(
                       cityName: widget.cityName,
                       isGuest: false,
@@ -655,7 +658,7 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const _HomeShimmer()
                   : RefreshIndicator(
                       onRefresh: _fetchData,
                       child: ListView(
@@ -826,6 +829,7 @@ class _HomeBody extends StatelessWidget {
             campaigns: campaigns,
             bannerUrls: bannerUrls,
             onOpenLive: onOpenLive,
+            onCampaignTap: (c) => showCampaignPreview(context, c),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -1204,11 +1208,13 @@ class _CampaignCarousel extends StatefulWidget {
   final List<Map<String, dynamic>> campaigns;
   final List<String> bannerUrls;
   final VoidCallback onOpenLive;
+  final Function(Map<String, dynamic>)? onCampaignTap;
 
   const _CampaignCarousel({
     required this.campaigns,
     required this.bannerUrls,
     required this.onOpenLive,
+    this.onCampaignTap,
   });
 
   @override
@@ -1324,8 +1330,14 @@ class _CampaignCarouselState extends State<_CampaignCarousel> {
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: GestureDetector(
-                  onTap: widget.onOpenLive,
+                child: BounceTap(
+                  onTap: () {
+                    if (widget.onCampaignTap != null) {
+                      widget.onCampaignTap!(c);
+                    } else {
+                      widget.onOpenLive();
+                    }
+                  },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
                     child: Stack(
@@ -2319,6 +2331,52 @@ class _SortChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  HOME SHIMMER PLACEHOLDER
+// ═══════════════════════════════════════════════════════════════════════
+
+class _HomeShimmer extends StatelessWidget {
+  const _HomeShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      children: const [
+        ShimmerBox(width: double.infinity, height: 48, radius: 14),
+        SizedBox(height: 16),
+        ShimmerBox(width: double.infinity, height: 200, radius: 22),
+        SizedBox(height: 20),
+        ShimmerCategoryRow(),
+        SizedBox(height: 20),
+        ShimmerLine(width: 140),
+        SizedBox(height: 12),
+        _ShimmerStoreRow(),
+        SizedBox(height: 24),
+        ShimmerLine(width: 160),
+        SizedBox(height: 12),
+        _ShimmerStoreRow(),
+      ],
+    );
+  }
+}
+
+class _ShimmerStoreRow extends StatelessWidget {
+  const _ShimmerStoreRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 160,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 3,
+        itemBuilder: (_, __) => const ShimmerStoreCard(),
       ),
     );
   }

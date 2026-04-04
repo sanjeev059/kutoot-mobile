@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/premium_widgets.dart';
 import '../stores/stores_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
@@ -117,8 +118,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const ShimmerListLoader(itemCount: 2, itemHeight: 200)
           : _error != null
               ? Center(
                   child: Column(

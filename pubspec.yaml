@@ -41,6 +41,7 @@ dependencies:
 
   # Device info
   device_info_plus: ^12.0.0
+  video_player: ^2.11.1
 
 dev_dependencies:
   flutter_test:

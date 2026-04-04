@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/premium_widgets.dart';
 import 'store_profile_screen.dart';
 
 class StoresScreen extends StatefulWidget {
@@ -125,8 +126,7 @@ class _StoresScreenState extends State<StoresScreen> {
         foregroundColor: AppTheme.textPrimary,
       ),
       body: _loading && _stores.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary))
+          ? const _StoresShimmer()
           : _error != null && _stores.isEmpty
               ? Center(
                   child: Column(
@@ -300,6 +300,24 @@ class _StoresScreenState extends State<StoresScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _StoresShimmer extends StatelessWidget {
+  const _StoresShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        ShimmerCategoryRow(),
+        SizedBox(height: 20),
+        ShimmerCard(height: 140),
+        ShimmerCard(height: 140),
+        ShimmerCard(height: 140),
+      ],
     );
   }
 }
