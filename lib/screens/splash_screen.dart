@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/location_bootstrap_service.dart';
@@ -28,13 +29,32 @@ class _SplashScreenState extends State<SplashScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
+
+      // Run auth check and splash delay in parallel
       await Future.wait([
         auth.checkAuth(),
         Future<void>.delayed(const Duration(milliseconds: 3500)),
       ]);
       if (!mounted) return;
 
-      final city = await LocationBootstrapService.ensureFirstLaunchLocation();
+      // Step 1: Request APP permission (shows "Allow while using app" dialog)
+      final permission =
+          await LocationBootstrapService.requestAppPermission();
+      if (!mounted) return;
+
+      // Step 2: If permission granted, ensure GPS is turned on
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        await LocationBootstrapService.ensureGpsEnabled();
+        if (!mounted) return;
+      } else if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        if (!mounted) return;
+      }
+
+      // Step 3: Fetch actual location (will use GPS if available, else fallback)
+      final city =
+          await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
 
       final Widget destination = auth.isLoggedIn
@@ -104,7 +124,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 22),
                 const Text(
-                  'THE CULINARY CURATOR',
+                  'THE FUTURE OF LOCAL COMMERCE',
                   style: TextStyle(
                     color: Color(0xFF2D2927),
                     fontSize: 9.8,

@@ -86,7 +86,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               text: 'e-Gift Balance',
               dense: true,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF3E0),

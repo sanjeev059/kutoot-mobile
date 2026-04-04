@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../api/kutoot_api.dart';
-import '../transactions/transactions_screen.dart';
-import '../payment/payment_methods_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -12,307 +9,354 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  final _api = KutootApi();
-  List<dynamic> _transactions = [];
-  bool _loading = true;
+  String _filter = 'Active';
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  final List<_LootCard> _lootCards = const [
+    _LootCard(
+      title: '60% OFF',
+      brand: 'Starbucks Reserve',
+      code: 'SBUX60',
+      status: _LootStatus.active,
+      expiresIn: '3 days',
+    ),
+    _LootCard(
+      title: '₹500 Cashback',
+      brand: 'HDFC Bank',
+      code: 'HDFC500',
+      status: _LootStatus.active,
+      expiresIn: '7 days',
+    ),
+    _LootCard(
+      title: 'BOGO Deal',
+      brand: 'Westside Fashion',
+      code: 'WESTBOGO',
+      status: _LootStatus.expiringSoon,
+      expiresIn: '1 day',
+    ),
+    _LootCard(
+      title: '15% OFF',
+      brand: 'Nature\'s Basket',
+      code: 'NB15',
+      status: _LootStatus.used,
+      expiresIn: null,
+    ),
+    _LootCard(
+      title: '₹200 OFF',
+      brand: 'Croma Electronics',
+      code: 'CROMA200',
+      status: _LootStatus.used,
+      expiresIn: null,
+    ),
+  ];
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try {
-      final res = await _api.getTransactions();
-      final data = res.data;
-      if (data is Map && data['data'] != null) {
-        _transactions =
-            data['data'] is List ? (data['data'] as List).take(5).toList() : [];
-      } else if (data is List) {
-        _transactions = data.take(5).toList();
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+  List<_LootCard> get _filteredCards {
+    switch (_filter) {
+      case 'Active':
+        return _lootCards
+            .where((c) =>
+                c.status == _LootStatus.active ||
+                c.status == _LootStatus.expiringSoon)
+            .toList();
+      case 'Used':
+        return _lootCards.where((c) => c.status == _LootStatus.used).toList();
+      case 'Expiring':
+        return _lootCards
+            .where((c) => c.status == _LootStatus.expiringSoon)
+            .toList();
+      default:
+        return _lootCards;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final cards = _filteredCards;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFFFF8F5),
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        backgroundColor: Colors.white.withOpacity(0.92),
         elevation: 0,
-        title: Text('Wallet',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.bold)),
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        title: const Text(
+          'My Loot',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
+          ),
+        ),
+        foregroundColor: AppTheme.textPrimary,
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primary, AppTheme.primaryDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Balance',
-                        style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '\$1,240.50',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const PaymentMethodsScreen(
-                                        amount: 500))),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: BorderSide(
-                                  color: Colors.white.withOpacity(0.8)),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.arrow_downward_rounded, size: 16),
-                                SizedBox(width: 6),
-                                Text('Top Up'),
-                              ],
-                            ),
-                          ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: ['Active', 'Used', 'Expiring'].map((f) {
+                final active = _filter == f;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _filter = f),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: active ? AppTheme.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: active
+                              ? AppTheme.primary
+                              : const Color(0xFFE1BEC0),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _showComingSoon(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: BorderSide(
-                                  color: Colors.white.withOpacity(0.8)),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.arrow_upward_rounded, size: 16),
-                                SizedBox(width: 6),
-                                Text('Withdraw'),
-                              ],
-                            ),
+                      ),
+                      child: Text(
+                        f,
+                        style: TextStyle(
+                          color: active ? Colors.white : AppTheme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          Expanded(
+            child: cards.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.inventory_2_outlined,
+                            size: 56,
+                            color: AppTheme.textSecondary.withOpacity(0.4)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No loot here yet',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Recent Transactions',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  TextButton(
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const TransactionsScreen())),
-                    child: const Text('See all'),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    itemCount: cards.length,
+                    itemBuilder: (_, i) {
+                      final card = cards[i];
+                      final isExpiring =
+                          card.status == _LootStatus.expiringSoon;
+                      final isUsed = card.status == _LootStatus.used;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: isUsed
+                              ? const Color(0xFFF5F5F5)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isExpiring
+                                ? const Color(0xFFE53935).withOpacity(0.4)
+                                : const Color(0xFFE1BEC0)
+                                    .withOpacity(isUsed ? 0.3 : 1),
+                          ),
+                          boxShadow: isUsed
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: (isExpiring
+                                            ? const Color(0xFFE53935)
+                                            : Colors.black)
+                                        .withOpacity(0.06),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                        ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                decoration: BoxDecoration(
+                                  color: isExpiring
+                                      ? const Color(0xFFE53935)
+                                      : (isUsed
+                                          ? Colors.grey.shade300
+                                          : AppTheme.primary),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(18),
+                                    bottomLeft: Radius.circular(18),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              card.brand,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: isUsed
+                                                    ? Colors.grey
+                                                    : AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isExpiring)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE53935)
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(99),
+                                              ),
+                                              child: Text(
+                                                'EXPIRING SOON',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                  color:
+                                                      const Color(0xFFE53935),
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                          if (isUsed)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(99),
+                                              ),
+                                              child: const Text(
+                                                'USED',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.grey,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        card.title,
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: isUsed
+                                              ? Colors.grey
+                                              : AppTheme.textPrimary,
+                                          decoration: isUsed
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Code: ${card.code}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: isUsed
+                                                  ? Colors.grey
+                                                  : AppTheme.textSecondary,
+                                            ),
+                                          ),
+                                          if (card.expiresIn != null) ...[
+                                            const SizedBox(width: 12),
+                                            Icon(
+                                              Icons.access_time,
+                                              size: 12,
+                                              color: isExpiring
+                                                  ? const Color(0xFFE53935)
+                                                  : AppTheme.textSecondary,
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              card.expiresIn!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: isExpiring
+                                                    ? const Color(0xFFE53935)
+                                                    : AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (!isUsed)
+                                Container(
+                                  width: 1,
+                                  color: const Color(0xFFE1BEC0)
+                                      .withOpacity(0.4),
+                                ),
+                              if (!isUsed)
+                                SizedBox(
+                                  width: 80,
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary,
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: const Text(
+                                          'USE',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (_loading)
-                const Center(
-                    child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child:
-                            CircularProgressIndicator(color: AppTheme.primary)))
-              else if (_transactions.isEmpty) ...[
-                _TransactionItem(
-                    icon: Icons.restaurant_rounded,
-                    name: 'Burger King',
-                    date: 'Today',
-                    amount: '-\$12.50'),
-                _TransactionItem(
-                    icon: Icons.coffee_rounded,
-                    name: 'Starbucks',
-                    date: 'Yesterday',
-                    amount: '-\$5.50'),
-                _TransactionItem(
-                    icon: Icons.store_rounded,
-                    name: 'The Coffee Artisan',
-                    date: '2 days ago',
-                    amount: '+\$2.00'),
-              ] else
-                ..._transactions.map((t) {
-                  final item = t is Map ? t : {};
-                  return _TransactionItem(
-                    icon: _iconForType(item['type'] ?? ''),
-                    name:
-                        item['description'] ?? item['reason'] ?? 'Transaction',
-                    date: item['created_at'] ?? item['date'] ?? '',
-                    amount: item['amount'] != null ? '₹${item['amount']}' : '',
-                  );
-                }),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isDark
-                      ? []
-                      : [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10)
-                        ],
-                ),
-                child: const Row(
-                  children: [
-                    Expanded(
-                        child: _MonthStat(
-                            label: 'Total Spent',
-                            value: '\$324.80',
-                            valueColor: AppTheme.textPrimary)),
-                    Expanded(
-                        child: _MonthStat(
-                            label: 'Cashback Earned',
-                            value: '\$16.24',
-                            valueColor: Colors.green)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _iconForType(String type) {
-    final t = type.toLowerCase();
-    if (t.contains('food') || t.contains('restaurant'))
-      return Icons.restaurant_rounded;
-    if (t.contains('coffee')) return Icons.coffee_rounded;
-    return Icons.receipt_long_rounded;
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Coming soon')));
-  }
-}
-
-class _TransactionItem extends StatelessWidget {
-  final IconData icon;
-  final String name;
-  final String date;
-  final String amount;
-
-  const _TransactionItem(
-      {required this.icon,
-      required this.name,
-      required this.date,
-      required this.amount});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12)
-              ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppTheme.primary),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface)),
-                Text(date,
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.7),
-                        fontSize: 12)),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: amount.startsWith('+')
-                  ? Colors.green
-                  : Theme.of(context).colorScheme.onSurface,
-            ),
           ),
         ],
       ),
@@ -320,32 +364,20 @@ class _TransactionItem extends StatelessWidget {
   }
 }
 
-class _MonthStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color valueColor;
+enum _LootStatus { active, used, expiringSoon }
 
-  const _MonthStat(
-      {required this.label, required this.value, required this.valueColor});
+class _LootCard {
+  final String title;
+  final String brand;
+  final String code;
+  final _LootStatus status;
+  final String? expiresIn;
 
-  @override
-  Widget build(BuildContext context) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.7))),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: valueColor == AppTheme.textPrimary ? textColor : valueColor,
-          ),
-        ),
-      ],
-    );
-  }
+  const _LootCard({
+    required this.title,
+    required this.brand,
+    required this.code,
+    required this.status,
+    this.expiresIn,
+  });
 }

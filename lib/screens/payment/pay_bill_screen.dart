@@ -278,6 +278,8 @@ class _PayBillScreenState extends State<PayBillScreen> {
           ),
         ),
       );
+      await _showRatingDialog();
+      if (!mounted) return;
       Navigator.pop(context, true);
       return;
     }
@@ -416,6 +418,8 @@ class _PayBillScreenState extends State<PayBillScreen> {
         if (!mounted) return;
       }
       if (!mounted) return;
+      await _showRatingDialog();
+      if (!mounted) return;
       Navigator.pop(context, true);
     } catch (_) {
       if (!mounted) return;
@@ -442,6 +446,80 @@ class _PayBillScreenState extends State<PayBillScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('External wallet: ${response.walletName ?? '-'}')),
+    );
+  }
+
+  Future<void> _showRatingDialog() async {
+    int rating = 0;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              const Text(
+                'How was your experience?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.merchantLocation['name']?.toString() ??
+                    widget.merchantLocation['branch_name']?.toString() ??
+                    'Store',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF757575),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => rating = i + 1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        i < rating ? Icons.star : Icons.star_border,
+                        color: i < rating ? const Color(0xFFFFA000) : const Color(0xFFBDBDBD),
+                        size: 36,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    rating > 0 ? 'Submit' : 'Skip',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -513,47 +591,57 @@ class _PayBillScreenState extends State<PayBillScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Enter Bill Amount',
+                  'ENTER BILL AMOUNT',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     letterSpacing: 1.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text('₹',
-                        style: TextStyle(
-                            fontSize: 30, fontWeight: FontWeight.w800)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
-                          height: 1,
-                        ),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          hintText: '0.00',
-                          hintStyle: TextStyle(
-                            color: AppTheme.surfaceContainerHighest,
-                            fontSize: 36,
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.black.withOpacity(0.08)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text('₹',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.w800,
+                              color: AppTheme.primary)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          style: const TextStyle(
+                            fontSize: 28,
                             fontWeight: FontWeight.w800,
+                            height: 1,
                           ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            hintText: '0.00',
+                            hintStyle: TextStyle(
+                              color: AppTheme.surfaceContainerHighest,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          onChanged: (_) => setState(() {}),
                         ),
-                        onChanged: (_) => setState(() {}),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -572,9 +660,11 @@ class _PayBillScreenState extends State<PayBillScreen> {
                       Flexible(
                         child: Text(
                           'You will earn $stampsEarned stamps from this visit',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -588,7 +678,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Vibrant Deals',
+              const Text('Vibrant Drops',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
               GestureDetector(
                 onTap: () {
@@ -598,7 +688,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
                     curve: Curves.easeOut,
                   );
                 },
-                child: const Text('View All',
+                child: const Text('See All Drops',
                     style: TextStyle(
                         color: AppTheme.primary, fontWeight: FontWeight.w700)),
               ),
@@ -771,28 +861,48 @@ class _PayBillScreenState extends State<PayBillScreen> {
   }
 
   Widget _line(String label, double amount, {bool highlight = false}) {
+    final isDiscount = amount < 0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Container(
+        padding: highlight
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+            : EdgeInsets.zero,
+        decoration: highlight
+            ? BoxDecoration(
+                color: const Color(0xFFFFF1E8),
+                borderRadius: BorderRadius.circular(8),
+              )
+            : null,
+        child: Row(
+          children: [
+            if (isDiscount)
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Icon(Icons.check_circle, size: 14, color: Color(0xFF2E7D32)),
+              ),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: highlight ? FontWeight.w800 : FontWeight.w500,
+                  fontSize: highlight ? 18 : 14,
+                  color: isDiscount ? const Color(0xFF2E7D32) : null,
+                ),
+              ),
+            ),
+            Text(
+              '${amount < 0 ? '-' : ''}₹${amount.abs().toStringAsFixed(0)}',
               style: TextStyle(
-                fontWeight: highlight ? FontWeight.w800 : FontWeight.w500,
+                color: isDiscount
+                    ? const Color(0xFF2E7D32)
+                    : (highlight ? AppTheme.primary : null),
+                fontWeight: highlight ? FontWeight.w900 : FontWeight.w600,
                 fontSize: highlight ? 18 : 14,
               ),
             ),
-          ),
-          Text(
-            '${amount < 0 ? '-' : ''}₹${amount.abs().toStringAsFixed(0)}',
-            style: TextStyle(
-              color: amount < 0 ? const Color(0xFF2E7D32) : null,
-              fontWeight: highlight ? FontWeight.w900 : FontWeight.w600,
-              fontSize: highlight ? 18 : 14,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

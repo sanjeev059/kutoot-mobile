@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'contact_support_screen.dart';
-import '../splash_screen.dart';
+import '../home/kinetic_home_screens.dart';
+import '../../services/location_bootstrap_service.dart';
 
 class TicketSubmittedScreen extends StatelessWidget {
   const TicketSubmittedScreen({super.key});
@@ -47,10 +48,19 @@ class TicketSubmittedScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pushAndRemoveUntil(
+                  onPressed: () async {
+                    final city =
+                        await LocationBootstrapService.getCachedCity();
+                    if (!context.mounted) return;
+                    Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (_) => const SplashScreen()),
-                      (r) => false),
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            LoggedInHomeScreen(cityName: city),
+                      ),
+                      (r) => false,
+                    );
+                  },
                   child: const Text('Go to Home'),
                 ),
               ),

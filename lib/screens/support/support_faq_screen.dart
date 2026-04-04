@@ -221,8 +221,9 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
         const SizedBox(height: 20),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.surfaceContainerHigh,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.black.withOpacity(0.08)),
           ),
           child: TextField(
             controller: _searchController,
@@ -273,7 +274,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
               onTap: () => setState(() => _activeCategoryIndex = i),
               child: Container(
                 width: (MediaQuery.of(context).size.width - 40 - 12) / 2,
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: active
                       ? AppTheme.secondaryContainer
@@ -294,8 +295,8 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: active
                             ? Colors.white.withValues(alpha: 0.2)
@@ -313,15 +314,15 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
                       child: Icon(
                         cat.icon,
                         color: active ? Colors.white : AppTheme.secondary,
-                        size: 24,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     Text(
                       cat.label,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 11,
                         color: active ? Colors.white : AppTheme.textSecondary,
                       ),
                     ),
@@ -535,22 +536,28 @@ class _FaqTileState extends State<_FaqTile>
               ),
             ),
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Text(
-                widget.a,
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                  height: 1.6,
+          ClipRect(
+            clipBehavior: Clip.hardEdge,
+            child: AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity, height: 0),
+              secondChild: SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  child: Text(
+                    widget.a,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
                 ),
               ),
+              crossFadeState:
+                  _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
             ),
-            crossFadeState:
-                _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
           ),
         ],
       ),

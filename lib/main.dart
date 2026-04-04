@@ -37,7 +37,7 @@ class KutootApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: MaterialApp(
-        title: 'Kutoot',
+        title: 'KUTOOT',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

@@ -95,14 +95,14 @@ class SupportSubmittedScreen extends StatelessWidget {
                         right: -8,
                         top: -8,
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 50,
+                          height: 50,
                           decoration: BoxDecoration(
                             color: AppTheme.secondary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.support_agent,
-                              color: AppTheme.secondary),
+                              color: AppTheme.secondary, size: 28),
                         ),
                       ),
                     ],

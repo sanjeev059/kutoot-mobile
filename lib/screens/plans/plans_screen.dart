@@ -231,12 +231,13 @@ class _PlansTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       color: Colors.white.withOpacity(0.92),
       child: Stack(
-        alignment: Alignment.center,
         children: [
-          Center(
-            child: Image.asset(
-              'assets/images/k_logo.png',
-              height: 48,
+          Positioned.fill(
+            child: Center(
+              child: Image.asset(
+                'assets/images/k_logo.png',
+                height: 48,
+              ),
             ),
           ),
           Row(
@@ -303,7 +304,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(22),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -318,22 +319,22 @@ class _PlanCard extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(22),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(plan.icon, color: Colors.white, size: 20),
+                    child: Icon(plan.icon, color: Colors.white, size: 18),
                   ),
                   const Spacer(),
                   if (plan.badges.isNotEmpty)
@@ -367,7 +368,7 @@ class _PlanCard extends StatelessWidget {
                 plan.name,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 30,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -375,7 +376,7 @@ class _PlanCard extends StatelessWidget {
                 plan.tier,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.70),
-                  fontSize: 11,
+                  fontSize: 10,
                   letterSpacing: 1.1,
                   fontWeight: FontWeight.w700,
                 ),
@@ -385,7 +386,7 @@ class _PlanCard extends StatelessWidget {
                 '₹${plan.price}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 31,
+                  fontSize: 26,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -393,7 +394,7 @@ class _PlanCard extends StatelessWidget {
                 plan.validity,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.72),
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -422,7 +423,7 @@ class _PlanCard extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'ELIGIBLE DEALS',
+                'ELIGIBLE DROPS',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.62),
                   fontSize: 9,
@@ -532,10 +533,10 @@ class _PlansBottomNav extends StatelessWidget {
   const _PlansBottomNav({required this.cityName});
   @override
   Widget build(BuildContext context) {
-    final items = ['HOME', 'REWARDS', 'PLANS', 'ACCOUNT'];
+    final items = ['HOME', 'DROPS', 'PLANS', 'PROFILE'];
     final icons = [
       Icons.home_rounded,
-      Icons.sell_rounded,
+      Icons.local_offer_rounded,
       Icons.confirmation_num_rounded,
       Icons.person_rounded,
     ];

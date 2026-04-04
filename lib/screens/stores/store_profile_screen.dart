@@ -332,7 +332,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'EXCLUSIVE OFFERS',
+                        'EXCLUSIVE DROPS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -342,7 +342,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'Curated Deals',
+                        'Curated Drops',
                         style: TextStyle(
                             fontSize: 20, fontWeight: FontWeight.w800),
                       ),
@@ -603,10 +603,10 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   border:
-                      Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                      Border.all(color: Colors.black.withValues(alpha: 0.08)),
                 ),
                 child: Row(
                   children: [
@@ -858,7 +858,7 @@ class _CouponCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
+      width: 240,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -869,7 +869,7 @@ class _CouponCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -880,7 +880,7 @@ class _CouponCard extends StatelessWidget {
                 coupon.badge,
                 style: const TextStyle(
                   color: AppTheme.primary,
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
                 ),
@@ -888,22 +888,22 @@ class _CouponCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               coupon.title,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               coupon.subtitle,
               style: const TextStyle(
-                  color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                  color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
             child: Text(
               'Requires ${coupon.requiredPlan} plan+',
               style: TextStyle(
@@ -911,13 +911,13 @@ class _CouponCard extends StatelessWidget {
                     ? const Color(0xFF2E7D32)
                     : const Color(0xFFBA1A1A),
                 fontWeight: FontWeight.w700,
-                fontSize: 11,
+                fontSize: 10,
               ),
             ),
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: const BoxDecoration(
               color: Color(0xFFFFF1E8),
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
@@ -925,12 +925,25 @@ class _CouponCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Code: ${coupon.code}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textSecondary,
-                        fontSize: 12),
+                  child: Row(
+                    children: [
+                      if (coupon.badge.contains('BANK'))
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(Icons.verified,
+                              size: 14, color: Color(0xFF2E7D32)),
+                        ),
+                      Expanded(
+                        child: Text(
+                          'Code: ${coupon.code}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 ElevatedButton(

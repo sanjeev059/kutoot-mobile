@@ -171,16 +171,9 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
               ),
               child: Row(
                 children: [
@@ -260,74 +253,83 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
       bottom: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-              onPressed: () => Navigator.of(context).pop(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                    color: AppTheme.secondaryContainer.withValues(alpha: 0.25)),
+        child: SizedBox(
+          height: 48,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Center(
+                  child: Image.asset(AppTheme.logoAsset,
+                      height: 40, fit: BoxFit.contain),
+                ),
               ),
-              child: Row(
+              Row(
                 children: [
-                  const Icon(Icons.location_on,
-                      size: 14, color: AppTheme.secondaryContainer),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
                   const SizedBox(width: 4),
-                  Text(
-                    '${widget.cityName} ▾',
-                    style: const TextStyle(
-                      color: AppTheme.secondaryContainer,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                          color: AppTheme.secondaryContainer.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on,
+                            size: 14, color: AppTheme.secondaryContainer),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.cityName} ▾',
+                          style: const TextStyle(
+                            color: AppTheme.secondaryContainer,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  InkWell(
+                    onTap: widget.onUpgradeTap,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        widget.upgradeLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: Center(
-                child: Image.asset(AppTheme.logoAsset,
-                    height: 48, fit: BoxFit.contain),
-              ),
-            ),
-            InkWell(
-              onTap: widget.onUpgradeTap,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  widget.upgradeLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -463,21 +465,21 @@ class _DealCard extends StatelessWidget {
           children: [
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: deal.brandColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(deal.brandIcon,
-                              color: deal.brandColor, size: 22),
+                              color: deal.brandColor, size: 18),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -496,7 +498,7 @@ class _DealCard extends StatelessWidget {
                               Text(
                                 deal.brandName,
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: AppTheme.textPrimary,
                                 ),
@@ -510,7 +512,7 @@ class _DealCard extends StatelessWidget {
                     Text(
                       deal.title,
                       style: const TextStyle(
-                        fontSize: 34,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
                         color: AppTheme.textPrimary,
                         height: 1,
@@ -532,7 +534,7 @@ class _DealCard extends StatelessWidget {
                             deal.subtitle,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

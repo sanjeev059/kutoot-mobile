@@ -245,8 +245,7 @@ class _CampaignHeader extends StatelessWidget {
             child: Center(
               child: Image.asset(
                 _kLogoAsset,
-                width: 42,
-                height: 42,
+                height: 48,
                 fit: BoxFit.contain,
               ),
             ),
@@ -434,45 +433,47 @@ class _CampaignTicket extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text(
-                        'Progress Meter',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: AppTheme.primaryContainer,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${campaign.progress}% Progress',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: List.generate(10, (index) {
-                      final active = index < filledBars;
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 2),
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: active
-                                ? AppTheme.primaryContainer
-                                : const Color(0xFFF5E5DB),
-                            borderRadius: BorderRadius.circular(3),
+                  if (campaign.live) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Text(
+                          'Progress Meter',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: AppTheme.primaryContainer,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      );
-                    }),
-                  ),
+                        const Spacer(),
+                        Text(
+                          '${campaign.progress}% Progress',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: List.generate(10, (index) {
+                        final active = index < filledBars;
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 2),
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? AppTheme.primaryContainer
+                                  : const Color(0xFFF5E5DB),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

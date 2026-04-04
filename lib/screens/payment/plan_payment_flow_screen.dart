@@ -358,6 +358,7 @@ class PaymentSuccessScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const Spacer(),
             Container(
               width: 96,
               height: 96,
@@ -401,6 +402,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 child: const Text('Back to Home'),
               ),
             ),
+            const Spacer(),
           ],
         ),
       ),
