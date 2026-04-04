@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -34,13 +33,8 @@ void main() async {
       debugPrint('FlutterError: ${details.exception}');
     }
   };
-  runZonedGuarded(() {
-    runApp(const KutootApp());
-  }, (error, stack) {
-    if (kDebugMode) {
-      debugPrint('Uncaught error: $error\n$stack');
-    }
-  });
+
+  runApp(const KutootApp());
 }
 
 class KutootApp extends StatelessWidget {
