@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/location_bootstrap_service.dart';
+import '../services/notification_service.dart';
 import 'home/kinetic_home_screens.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -88,6 +89,8 @@ class _SplashScreenState extends State<SplashScreen>
       final city =
           await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
+
+      NotificationService().setCityName(city);
 
       final Widget destination = auth.isLoggedIn
           ? LoggedInHomeScreen(cityName: city)

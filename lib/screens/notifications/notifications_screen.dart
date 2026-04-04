@@ -68,6 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         item: n,
                         onTap: () {
                           if (!n.isRead) _service.markAsRead(n.id);
+                          _service.navigateToScreen(n.type, n.actionData);
                         },
                       );
                     },

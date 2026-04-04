@@ -2,6 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../api/kutoot_api.dart';
+import '../screens/campaigns/campaign_detail_screen.dart';
+import '../screens/campaigns/campaigns_screen.dart';
+import '../screens/plans/plans_screen.dart';
+import '../screens/rewards/rewards_deals_screen.dart';
+import '../screens/stores/stores_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
 
 class NotificationService extends ChangeNotifier {
   static final NotificationService _instance = NotificationService._();
@@ -11,6 +17,9 @@ class NotificationService extends ChangeNotifier {
   final _api = KutootApi();
   final _messaging = FirebaseMessaging.instance;
   Timer? _pollTimer;
+
+  GlobalKey<NavigatorState>? _navigatorKey;
+  String _cityName = 'Bengaluru';
 
   int _unreadCount = 0;
   List<NotificationItem> _notifications = [];
@@ -31,6 +40,14 @@ class NotificationService extends ChangeNotifier {
     'plans',
     'campaigns',
   ];
+
+  void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
+  }
+
+  void setCityName(String city) {
+    _cityName = city;
+  }
 
   Future<void> initFCM() async {
     final settings = await _messaging.requestPermission(
@@ -64,7 +81,9 @@ class NotificationService extends ChangeNotifier {
 
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      _handleMessageTap(initialMessage);
+      Future.delayed(const Duration(seconds: 2), () {
+        _handleMessageTap(initialMessage);
+      });
     }
   }
 
@@ -77,7 +96,8 @@ class NotificationService extends ChangeNotifier {
         id: message.hashCode,
         title: notification.title ?? 'Notification',
         body: notification.body ?? '',
-        type: message.data['type']?.toString() ?? 'general',
+        type: _extractType(message.data),
+        actionData: Map<String, dynamic>.from(message.data),
         isRead: false,
         createdAt: DateTime.now().toIso8601String(),
       );
@@ -89,7 +109,75 @@ class NotificationService extends ChangeNotifier {
 
   void _handleMessageTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.data}');
+    final type = _extractType(message.data);
+    final data = Map<String, dynamic>.from(message.data);
+    navigateToScreen(type, data);
     fetchNotifications();
+  }
+
+  String _extractType(Map<String, dynamic> data) {
+    if (data.containsKey('type')) return data['type'].toString();
+    final actionData = data['action_data'];
+    if (actionData is Map && actionData.containsKey('type')) {
+      return actionData['type'].toString();
+    }
+    return 'general';
+  }
+
+  void navigateToScreen(String type, Map<String, dynamic> data) {
+    final nav = _navigatorKey?.currentState;
+    if (nav == null) {
+      debugPrint('Navigator not available for notification deep link');
+      return;
+    }
+
+    debugPrint('Navigating for notification type: $type, data: $data');
+
+    Widget? screen;
+
+    switch (type) {
+      case 'campaign':
+        final campaignId = _parseInt(data['campaign_id']);
+        if (campaignId != null) {
+          screen = CampaignDetailScreen(campaignId: campaignId);
+        } else {
+          screen = CampaignsScreen(
+            cityName: _cityName,
+            upgradeLabel: 'UPGRADE',
+            onUpgradeTap: () => nav.push(
+              MaterialPageRoute(
+                builder: (_) => PlansScreen(cityName: _cityName),
+              ),
+            ),
+          );
+        }
+        break;
+
+      case 'new_store':
+        screen = const StoresScreen();
+        break;
+
+      case 'coupon':
+        screen = RewardsDealsScreen(cityName: _cityName);
+        break;
+
+      case 'plan':
+      case 'plan_update':
+        screen = PlansScreen(cityName: _cityName);
+        break;
+
+      default:
+        screen = const NotificationsScreen();
+        break;
+    }
+
+    nav.push(MaterialPageRoute(builder: (_) => screen!));
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 
   Future<void> _registerTokenWithBackend(String token) async {
@@ -147,6 +235,16 @@ class NotificationService extends ChangeNotifier {
         final m = item is Map
             ? Map<String, dynamic>.from(item)
             : <String, dynamic>{};
+
+        final actionData = m['action_data'] is Map
+            ? Map<String, dynamic>.from(m['action_data'])
+            : <String, dynamic>{};
+
+        final navType = m['action_type']?.toString() ??
+            actionData['type']?.toString() ??
+            m['type']?.toString() ??
+            'general';
+
         return NotificationItem(
           id: m['id'] is int
               ? m['id'] as int
@@ -158,7 +256,8 @@ class NotificationService extends ChangeNotifier {
               m['data']?['body']?.toString() ??
               m['message']?.toString() ??
               '',
-          type: m['type']?.toString() ?? 'general',
+          type: navType,
+          actionData: actionData,
           isRead: m['read_at'] != null,
           createdAt: m['created_at']?.toString() ?? '',
         );
@@ -202,6 +301,7 @@ class NotificationItem {
   final String title;
   final String body;
   final String type;
+  final Map<String, dynamic> actionData;
   final bool isRead;
   final String createdAt;
 
@@ -210,6 +310,7 @@ class NotificationItem {
     required this.title,
     required this.body,
     required this.type,
+    this.actionData = const {},
     this.isRead = false,
     this.createdAt = '',
   });
@@ -219,6 +320,7 @@ class NotificationItem {
         title: title,
         body: body,
         type: type,
+        actionData: actionData,
         isRead: isRead ?? this.isRead,
         createdAt: createdAt,
       );
@@ -234,7 +336,10 @@ class NotificationItem {
       case 'campaign':
         return Icons.campaign_rounded;
       case 'plan':
+      case 'plan_update':
         return Icons.workspace_premium_rounded;
+      case 'new_store':
+        return Icons.store_rounded;
       default:
         return Icons.notifications_rounded;
     }
