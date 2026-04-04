@@ -13,6 +13,16 @@ class KutootApi {
     aOptions: AndroidOptions(encryptedSharedPreferences: false),
   );
 
+  /// Parses mobile API envelopes: `{ "success": true, "data": { ... } }`.
+  static Map<String, dynamic>? unwrapSuccessData(dynamic body) {
+    if (body is! Map) return null;
+    final m = Map<String, dynamic>.from(body);
+    if (m['success'] == true && m['data'] is Map) {
+      return Map<String, dynamic>.from(m['data'] as Map);
+    }
+    return null;
+  }
+
   KutootApi._() {
     _dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,

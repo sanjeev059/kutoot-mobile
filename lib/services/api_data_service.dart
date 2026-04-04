@@ -244,6 +244,9 @@ class ApiDataService {
           'is_active': m['is_active'] == true,
           'bounty_percentage': m['bounty_percentage'] ?? 0,
           'image': _resolveCampaignImage(m),
+          'media': m['media'] is List
+              ? List<dynamic>.from(m['media'] as List)
+              : <dynamic>[],
         };
       }).toList();
     } catch (_) {

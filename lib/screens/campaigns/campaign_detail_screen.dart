@@ -58,18 +58,18 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     });
     try {
       final res = await _api.getCampaign(widget.campaignId);
-      final data = res.data;
+      final data = KutootApi.unwrapSuccessData(res.data);
+      if (data == null) {
+        throw Exception('Invalid campaign response');
+      }
       Map<String, dynamic>? bounty;
       try {
         final bountyRes = await _api.getCampaignBounty(widget.campaignId);
-        bounty = bountyRes.data is Map
-            ? Map<String, dynamic>.from(bountyRes.data as Map)
-            : null;
+        bounty = KutootApi.unwrapSuccessData(bountyRes.data);
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _campaign =
-              data is Map ? Map<String, dynamic>.from(data as Map) : data;
+          _campaign = data;
           _bounty = bounty;
           _loading = false;
         });
@@ -108,14 +108,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
-        title: const Text('Campaign',
+        title: Text('Campaign',
             style: TextStyle(
-                color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
-        foregroundColor: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold)),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _loading
           ? const ShimmerListLoader(itemCount: 2, itemHeight: 200)

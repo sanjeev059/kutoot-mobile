@@ -40,7 +40,8 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
   bool _videoError = false;
-  bool _muted = true;
+  bool _muted = false;
+  String? _activeVideoUrl;
   late final AnimationController _sheetAnim;
 
   int get _campaignId =>
@@ -55,6 +56,9 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     )..forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tryStartVideoFromMap(widget.campaign);
+    });
     _loadDetail();
   }
 
@@ -72,44 +76,49 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
     }
     try {
       final res = await _api.getCampaign(_campaignId);
-      final data =
-          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data = KutootApi.unwrapSuccessData(res.data);
       if (mounted) {
         setState(() {
           _detail = data;
           _loading = false;
         });
-        _initVideo(data);
+        if (data != null) _tryStartVideoFromMap(data);
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _initVideo(Map<String, dynamic>? data) {
-    if (data == null) return;
-    final media = data['media'];
-    if (media is! List || media.isEmpty) return;
-
-    String? videoUrl;
+  String? _firstVideoUrlFromMedia(dynamic media) {
+    if (media is! List) return null;
     for (final m in media) {
       if (m is Map) {
         final mime = m['mime_type']?.toString() ?? '';
         if (mime.startsWith('video/')) {
-          videoUrl = m['url']?.toString();
-          break;
+          final u = m['url']?.toString();
+          if (u != null && u.isNotEmpty) return u;
         }
       }
     }
-    if (videoUrl == null || videoUrl.isEmpty) return;
+    return null;
+  }
 
-    final ctrl = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+  void _tryStartVideoFromMap(Map<String, dynamic> map) {
+    final url = _firstVideoUrlFromMedia(map['media']);
+    if (url == null || url.isEmpty) return;
+    if (_activeVideoUrl == url && _videoReady) return;
+    _activeVideoUrl = url;
+    _videoCtrl?.dispose();
+    _videoCtrl = null;
+    _videoReady = false;
+    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
     _videoCtrl = ctrl;
     ctrl.initialize().then((_) {
       if (!mounted) return;
-      setState(() => _videoReady = true);
       ctrl.setLooping(true);
-      ctrl.setVolume(0);
+      // Opening the sheet is a user gesture — autoplay with sound (matches web / Netflix-style preview).
+      ctrl.setVolume(_muted ? 0 : 1);
+      setState(() => _videoReady = true);
       ctrl.play();
     }).catchError((_) {
       if (mounted) setState(() => _videoError = true);
@@ -169,7 +178,7 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sheetColor = isDark ? const Color(0xFF1A1A1E) : Colors.white;
+    final sheetColor = isDark ? const Color(0xFF121212) : Colors.white;
 
     return AnimatedBuilder(
       animation: _sheetAnim,
@@ -235,6 +244,26 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
                 height: _videoCtrl!.value.size.height,
                 child: VideoPlayer(_videoCtrl!),
               ),
+            )
+          else if (_videoCtrl != null && !_videoReady)
+            Stack(
+              fit: StackFit.expand,
+              children: [
+                if (_imageUrl != null)
+                  CachedNetworkImage(
+                    imageUrl: _imageUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => _gradientFallback(),
+                  )
+                else
+                  _gradientFallback(),
+                const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white54,
+                    strokeWidth: 2,
+                  ),
+                ),
+              ],
             )
           else if (_imageUrl != null)
             CachedNetworkImage(
@@ -445,21 +474,15 @@ class _CampaignPreviewSheetState extends State<_CampaignPreviewSheet>
                       color: AppTheme.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'View Campaign',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
+                    child: const Center(
+                      child: Text(
+                        'Full details & join',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

@@ -90,30 +90,38 @@ class AppTheme {
     );
   }
 
+  /// Zomato-style dark: true black canvas, charcoal surfaces, muted grey labels.
   static ThemeData get darkTheme {
-    final scheme = ColorScheme.fromSeed(
+    const canvas = Color(0xFF000000);
+    const surfaceCard = Color(0xFF1C1C1C);
+    const surfaceElevated = Color(0xFF242424);
+    const onSurfaceMuted = Color(0xFF8E8E93);
+
+    final base = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: Brightness.dark,
       primary: primary,
-      primaryContainer: primaryContainer,
-      secondary: secondary,
-      secondaryContainer: secondaryContainer,
-      tertiary: tertiary,
-      tertiaryContainer: tertiaryContainer,
+      secondary: const Color(0xFF1DB954),
+    );
+    final scheme = base.copyWith(
+      surface: surfaceCard,
       onSurface: Colors.white,
-      surface: const Color(0xFF1A1614),
+      onSurfaceVariant: onSurfaceMuted,
+      outline: const Color(0xFF3A3A3C),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF3B322B),
-        foregroundColor: scheme.onSurface,
+      scaffoldBackgroundColor: canvas,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: canvas,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        surfaceTintColor: Colors.transparent,
       ),
+      dividerTheme: const DividerThemeData(color: Color(0xFF2C2C2E)),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryContainer,
@@ -125,22 +133,45 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF232326),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        fillColor: surfaceElevated,
+        hintStyle: const TextStyle(color: onSurfaceMuted),
+        labelStyle: const TextStyle(color: onSurfaceMuted),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF1C1C1E),
+        color: surfaceCard,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        selectedItemColor: primary,
-        unselectedItemColor: scheme.onSurface.withOpacity(0.65),
-        backgroundColor: const Color(0xFF1C1C1E),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        selectedItemColor: Color(0xFF1DB954),
+        unselectedItemColor: onSurfaceMuted,
+        backgroundColor: surfaceCard,
         type: BottomNavigationBarType.fixed,
       ),
     );
   }
+}
+
+/// Semantic colors for screens that still use hard-coded light fills.
+extension KutootThemeExt on BuildContext {
+  bool get isKutootDark => Theme.of(this).brightness == Brightness.dark;
+
+  Color get kutootPageBg =>
+      isKutootDark ? const Color(0xFF000000) : const Color(0xFFF8F8F8);
+
+  Color get kutootCardSurface => isKutootDark ? const Color(0xFF1C1C1C) : Colors.white;
+
+  Color get kutootSearchFill =>
+      isKutootDark ? const Color(0xFF2C2C2E) : Colors.white;
+
+  Color get kutootMutedText =>
+      isKutootDark ? const Color(0xFF8E8E93) : const Color(0xFF9A9A9A);
+
+  Color get kutootOnSurface => isKutootDark ? Colors.white : AppTheme.textPrimary;
 }

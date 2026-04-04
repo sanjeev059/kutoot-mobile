@@ -183,7 +183,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: context.kutootPageBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -195,18 +195,25 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.kutootCardSurface,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.black.withOpacity(0.06)),
+                    border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.25)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.account_circle_outlined, size: 16),
-                      SizedBox(width: 4),
+                      Icon(Icons.account_circle_outlined,
+                          size: 16, color: context.kutootOnSurface),
+                      const SizedBox(width: 4),
                       Text('GUEST • LOGIN',
                           style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 10)),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              color: context.kutootOnSurface)),
                     ],
                   ),
                 ),
@@ -368,7 +375,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: context.kutootPageBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -606,7 +613,7 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
     final filtered = List<Map<String, dynamic>>.from(_filteredStores);
     _applySort(filtered);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: context.kutootPageBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -615,7 +622,7 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+                    icon: Icon(Icons.arrow_back, color: context.kutootOnSurface),
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -832,12 +839,12 @@ class _HomeBody extends StatelessWidget {
             onCampaignTap: (c) => showCampaignPreview(context, c),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'TOP OFFERS TODAY',
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 1.5,
-              color: Color(0xFF9A9A9A),
+              color: context.kutootMutedText,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -877,12 +884,12 @@ class _HomeBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'EXPLORE CATEGORIES',
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 1.5,
-              color: Color(0xFF9A9A9A),
+              color: context.kutootMutedText,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1684,7 +1691,8 @@ class _HomeTopBar extends StatelessWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Icon(Icons.notifications_none_rounded,
-                        size: 26, color: AppTheme.textPrimary.withOpacity(0.7)),
+                        size: 26,
+                        color: context.kutootOnSurface.withOpacity(0.7)),
                     if (notificationCount > 0)
                       Positioned(
                         right: -4,
@@ -1787,26 +1795,45 @@ class _SearchBarState extends State<_SearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.search, color: Color(0x551C1C1C), size: 22),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            onChanged: widget.onChanged,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: widget.hint,
-              hintStyle: const TextStyle(
-                  color: Color(0x551C1C1C),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500),
-            ),
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-          ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final hintC =
+        dark ? const Color(0xFF8E8E93) : const Color(0x551C1C1C);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.kutootSearchFill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
         ),
-      ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: hintC, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              onChanged: widget.onChanged,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: widget.hint,
+                hintStyle: TextStyle(
+                    color: hintC,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500),
+              ),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: context.kutootOnSurface),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
