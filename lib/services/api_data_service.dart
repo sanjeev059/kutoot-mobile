@@ -480,7 +480,7 @@ class ApiDataService {
       'category': 'HOME',
       'image':
           'https://lh3.googleusercontent.com/aida-public/AB6AXuC8S9lnC0l-6bxkdx4sx7b96JcGcAH0AEdqPCvAhm8wVZnTywYsMWEDbxn1oTDV61KZbQET06wsKc4_vIXehaIl25sMPEomuuorwsK-Y54fOrueEeCW9OSlY6HlksO416zUNzgU-26CgQU_vs6GNPDOH9HhZDcPQv9jy2JQ_5Z3LyNFdsfRTcTeFJ_hC1YwQhXSEIV0XswHW7aK2jtT6uthtP4LBn4ftAj84mvpswr8IsVka1BztAdvMcXfuHYQQEzL7ouq1ron7sw',
-      'badge': 'EXT 10% OFF',
+      'badge': '10% OFFER',
       'rating': '4.2',
       'distance': '2.4 km',
       'is_demo_store': true,

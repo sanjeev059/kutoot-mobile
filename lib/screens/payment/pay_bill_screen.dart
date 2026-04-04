@@ -758,15 +758,9 @@ class _PayBillScreenState extends State<PayBillScreen> {
                           final id = c['id'] is int
                               ? c['id'] as int
                               : int.tryParse('${c['id']}');
-                          final stampsCollected =
-                              _readInt(c['stamps_collected']) ?? 0;
-                          final stampTarget =
-                              _readInt(c['stamp_target']) ?? 200;
                           return _CampaignRewardCard(
                             title: c['name']?.toString() ?? 'Campaign',
                             imageUrl: ImageUtils.fromBanner(c),
-                            stampsCollected: stampsCollected,
-                            stampTarget: stampTarget,
                             selected: id == _selectedCampaignId,
                             onTap: () =>
                                 setState(() => _selectedCampaignId = id),
@@ -957,8 +951,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
         return _CampaignRewardCard(
           title: c['name'] as String,
           imageUrl: c['banner_url'] as String,
-          stampsCollected: c['stamps_collected'] as int,
-          stampTarget: c['stamp_target'] as int,
           selected: id == _selectedCampaignId,
           onTap: () => setState(() => _selectedCampaignId = id),
         );
@@ -1076,27 +1068,18 @@ class _DealCard extends StatelessWidget {
 class _CampaignRewardCard extends StatelessWidget {
   final String title;
   final String? imageUrl;
-  final int stampsCollected;
-  final int stampTarget;
   final bool selected;
   final VoidCallback onTap;
 
   const _CampaignRewardCard({
     required this.title,
     this.imageUrl,
-    required this.stampsCollected,
-    required this.stampTarget,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress =
-        stampTarget > 0 ? (stampsCollected / stampTarget).clamp(0.0, 1.0) : 0.0;
-    final pct = (progress * 100).round();
-    final segments = 4;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1194,70 +1177,15 @@ class _CampaignRewardCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            height: 1.25,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$stampsCollected/$stampTarget',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: selected
-                              ? AppTheme.secondary
-                              : AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: List.generate(segments, (i) {
-                      final segmentFilled =
-                          progress > (i / segments) ? true : false;
-                      return Expanded(
-                        child: Container(
-                          height: 6,
-                          margin:
-                              EdgeInsets.only(right: i < segments - 1 ? 3 : 0),
-                          decoration: BoxDecoration(
-                            color: segmentFilled
-                                ? (selected
-                                    ? AppTheme.secondary
-                                    : AppTheme.primary.withValues(alpha: 0.4))
-                                : AppTheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '$pct% Complete',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textSecondary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  height: 1.25,
+                ),
               ),
             ),
           ],

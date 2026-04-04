@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,6 +54,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (savedEmail != null && _emailController.text.isEmpty) {
       _emailController.text = savedEmail;
     }
+    final savedPhone = prefs.getString('profile_phone');
+    if (savedPhone != null && _phoneController.text.isEmpty) {
+      _phoneController.text = savedPhone;
+    }
   }
 
   Future<void> _fetchRemote() async {
@@ -90,29 +95,96 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('profile_name', name);
-    if (email.isNotEmpty) await prefs.setString('profile_email', email);
+    final payload = <String, dynamic>{'name': name};
+    if (email.isNotEmpty) payload['email'] = email;
+    if (phone.isNotEmpty) payload['phone'] = phone;
 
     try {
-      await _api.updateProfile({
-        'name': name,
-        'email': email.isEmpty ? null : email,
-      }).timeout(const Duration(seconds: 5));
-      if (mounted) {
-        try {
-          context.read<AuthProvider>().checkAuth();
-        } catch (_) {}
+      final res = await _api
+          .updateProfile(payload)
+          .timeout(const Duration(seconds: 15));
+      final code = res.statusCode ?? 0;
+      if (code < 200 || code >= 300) {
+        throw DioException(
+          requestOptions: res.requestOptions,
+          response: res,
+          type: DioExceptionType.badResponse,
+        );
       }
-    } catch (_) {}
 
-    if (!mounted) return;
-    setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated')),
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('profile_name', name);
+      if (email.isNotEmpty) {
+        await prefs.setString('profile_email', email);
+      }
+      if (phone.isNotEmpty) {
+        await prefs.setString('profile_phone', phone);
+      }
+
+      if (mounted) {
+        await context.read<AuthProvider>().checkAuth();
+      }
+
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated')),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      var message = 'Could not update profile. Please try again.';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          message = data['message'].toString();
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          message = e.message!;
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  void _showAvatarOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coming soon')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coming soon')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
-    Navigator.pop(context);
   }
 
   @override
@@ -148,14 +220,21 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primary,
-                          shape: BoxShape.circle,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _showAvatarOptions,
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppTheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt,
+                                size: 16, color: Colors.white),
+                          ),
                         ),
-                        child: const Icon(Icons.camera_alt,
-                            size: 16, color: Colors.white),
                       ),
                     ),
                   ],
@@ -223,23 +302,21 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               const SizedBox(height: 6),
               TextFormField(
                 controller: _phoneController,
-                enabled: false,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   hintText: 'Phone number',
                   filled: true,
-                  fillColor: AppTheme.surfaceContainerLow,
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
                         const BorderSide(color: AppTheme.outlineVariant),
                   ),
-                  disabledBorder: OutlineInputBorder(
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
                         const BorderSide(color: AppTheme.outlineVariant),
                   ),
-                  suffixIcon: const Icon(Icons.lock_outline,
-                      size: 18, color: AppTheme.textSecondary),
                 ),
               ),
               const SizedBox(height: 32),

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/env.dart';
+import '../services/device_service.dart';
 
 /// Kutoot API client — production endpoints under /api/mobile
 class KutootApi {
@@ -32,6 +33,13 @@ class KutootApi {
             options.headers['Authorization'] = 'Bearer $token';
           }
         } catch (_) {}
+
+        // Attach device fingerprint to every request
+        try {
+          final deviceHeaders = await DeviceService().getDeviceHeaders();
+          options.headers.addAll(deviceHeaders);
+        } catch (_) {}
+
         return handler.next(options);
       },
       onError: (err, handler) async {
@@ -66,19 +74,29 @@ class KutootApi {
   Future<Response> register(Map<String, dynamic> data) =>
       _dio.post('/auth/register', data: data);
 
-  Future<Response> sendOtp(String identifier) =>
-      _dio.post('/auth/send-otp', data: {'identifier': identifier});
+  Future<Response> sendOtp(String identifier,
+          {String? deviceId}) =>
+      _dio.post('/auth/send-otp', data: {
+        'identifier': identifier,
+        if (deviceId != null) 'device_id': deviceId,
+      });
 
   Future<Response> verifyOtp(String identifier, String otp,
-          {String deviceName = 'flutter-app'}) =>
-      _dio.post('/auth/verify-otp',
-          data: {'identifier': identifier, 'otp': otp});
+          {String? deviceId, String? deviceModel}) =>
+      _dio.post('/auth/verify-otp', data: {
+        'identifier': identifier,
+        'otp': otp,
+        if (deviceId != null) 'device_id': deviceId,
+        if (deviceModel != null) 'device_model': deviceModel,
+      });
 
   Future<Response> getUser() => _dio.get('/auth/me');
 
   Future<Response> getMe() => _dio.get('/auth/me');
 
   Future<Response> logout() => _dio.post('/auth/logout');
+
+  Future<Response> deleteAccount() => _dio.delete('/auth/account');
 
   Future<Response> changePassword(Map<String, dynamic> data) =>
       _dio.post('/auth/change-password', data: data);
@@ -95,7 +113,7 @@ class KutootApi {
   Future<Response> getProfile() => _dio.get('/profile');
 
   Future<Response> updateProfile(Map<String, dynamic> data) =>
-      _dio.put('/profile', data: data);
+      _dio.put('/auth/profile', data: data);
 
   Future<Response> updateAvatar(FormData data) =>
       _dio.post('/profile/avatar', data: data);
@@ -150,7 +168,8 @@ class KutootApi {
 
   Future<Response> getCoupon(int id) => _dio.get('/coupons/$id');
 
-  Future<Response> redeemCoupon(int couponId, [Map<String, dynamic>? data]) =>
+  Future<Response> redeemCoupon(int couponId,
+          [Map<String, dynamic>? data]) =>
       _dio.post('/coupons/$couponId/redeem', data: data);
 
   Future<Response> getMyCoupons({Map<String, dynamic>? params}) =>
@@ -218,6 +237,11 @@ class KutootApi {
 
   Future<Response> getUnreadNotificationCount() =>
       _dio.get('/notifications/unread-count');
+
+  // ─── Device Token (FCM) ───────────────────────────────────────────
+  Future<Response> registerDeviceToken(
+          {required String token, required String platform}) =>
+      _dio.post('/device-tokens', data: {'token': token, 'platform': platform});
 
   // ─── Support Tickets ──────────────────────────────────────────────
   Future<Response> getSupportCategories() => _dio.get('/support/categories');

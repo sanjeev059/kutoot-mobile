@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../services/api_data_service.dart';
 import '../../theme/app_theme.dart';
 import '../payment/plan_payment_flow_screen.dart';
-import '../home/kinetic_home_screens.dart';
-import '../profile/profile_hub_screen.dart';
 import '../qr/qr_scan_screen.dart';
+import '../../widgets/kutoot_bottom_nav.dart';
+import '../../services/subscription_plan_service.dart';
 
 class PlansScreen extends StatefulWidget {
   final String cityName;
@@ -20,10 +20,12 @@ class _PlansScreenState extends State<PlansScreen> {
   List<_PlanData> _plans = _fallbackPlans;
   bool _loading = true;
   Timer? _refreshTimer;
+  String? _currentPlanName;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentPlan();
     _fetchPlans();
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchPlans());
@@ -33,6 +35,21 @@ class _PlansScreenState extends State<PlansScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadCurrentPlan() async {
+    final name = await SubscriptionPlanService.getCurrentPlanName();
+    if (!mounted) return;
+    setState(() => _currentPlanName = name);
+  }
+
+  bool _isUserCurrentPlan(_PlanData plan) {
+    final userPlan = _currentPlanName?.toUpperCase().trim() ?? '';
+    final cardPlan = plan.name.toUpperCase().trim();
+    if (userPlan.isEmpty) {
+      return cardPlan == 'FREE';
+    }
+    return userPlan == cardPlan;
   }
 
   Future<void> _fetchPlans() async {
@@ -159,7 +176,10 @@ class _PlansScreenState extends State<PlansScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: _fetchPlans,
+                      onRefresh: () async {
+                        await _loadCurrentPlan();
+                        await _fetchPlans();
+                      },
                       child: PageView.builder(
                         controller: PageController(viewportFraction: 0.86),
                         onPageChanged: (index) =>
@@ -171,6 +191,7 @@ class _PlansScreenState extends State<PlansScreen> {
                           child: _PlanCard(
                             plan: _plans[i],
                             selected: _selectedIndex == i,
+                            isActivePlan: _isUserCurrentPlan(_plans[i]),
                             onSelect: () {
                               setState(() => _selectedIndex = i);
                               Navigator.push(
@@ -215,7 +236,12 @@ class _PlansScreenState extends State<PlansScreen> {
           child: const Icon(Icons.qr_code_scanner, color: Colors.white),
         ),
       ),
-      bottomNavigationBar: _PlansBottomNav(cityName: widget.cityName),
+      bottomNavigationBar: KutootBottomNav(
+        activeIndex: 2,
+        cityName: widget.cityName,
+        isLoggedIn: true,
+        planLabel: 'PLANS',
+      ),
     );
   }
 }
@@ -292,16 +318,22 @@ class _PlansTopBar extends StatelessWidget {
 class _PlanCard extends StatelessWidget {
   final _PlanData plan;
   final bool selected;
+  final bool isActivePlan;
   final VoidCallback onSelect;
 
   const _PlanCard({
     required this.plan,
     required this.selected,
+    required this.isActivePlan,
     required this.onSelect,
   });
 
   @override
   Widget build(BuildContext context) {
+    final planNameLower = plan.name.toLowerCase().trim();
+    final buttonPlanLabel = (planNameLower == 'free' || plan.name.trim().isEmpty)
+        ? 'UPGRADE'
+        : plan.name.toUpperCase();
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
@@ -310,12 +342,20 @@ class _PlanCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: plan.gradient,
         ),
+        border: isActivePlan
+            ? Border.all(color: const Color(0xFFFFD700), width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.18),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
+          if (isActivePlan)
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.3),
+              blurRadius: 12,
+            ),
         ],
       ),
       child: ClipRRect(
@@ -470,7 +510,7 @@ class _PlanCard extends StatelessWidget {
                     border: Border.all(color: Colors.white.withOpacity(0.22)),
                   ),
                   child: Text(
-                    'SELECT ${plan.name.toUpperCase()}',
+                    'SELECT $buttonPlanLabel',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -523,79 +563,6 @@ class _MiniMetric extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PlansBottomNav extends StatelessWidget {
-  final String cityName;
-  const _PlansBottomNav({required this.cityName});
-  @override
-  Widget build(BuildContext context) {
-    final items = ['HOME', 'DROPS', 'PLANS', 'PROFILE'];
-    final icons = [
-      Icons.home_rounded,
-      Icons.local_offer_rounded,
-      Icons.confirmation_num_rounded,
-      Icons.person_rounded,
-    ];
-    return Container(
-      height: 84,
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: List.generate(items.length, (i) {
-          final active = i == 2;
-          return Expanded(
-            child: InkWell(
-              onTap: () {
-                if (i == 0) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => LoggedInHomeScreen(cityName: cityName),
-                    ),
-                    (route) => false,
-                  );
-                } else if (i == 3) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileHubScreen(
-                        cityName: cityName,
-                        planLabel: 'UPGRADE',
-                      ),
-                    ),
-                  );
-                }
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icons[i],
-                    color: active ? AppTheme.primary : const Color(0xFF9A9A9A),
-                    size: 25,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[i],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-                      color:
-                          active ? AppTheme.primary : const Color(0xFF9A9A9A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
       ),
     );
   }

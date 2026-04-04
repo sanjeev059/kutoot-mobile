@@ -13,11 +13,15 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const String _logoAsset = 'assets/images/k_logo.png';
   static const String _wordmarkAsset =
       'assets/images/kutoot_spell_transparent.png';
   late final AnimationController _controller;
+  late final AnimationController _logoController;
+  late final AnimationController _wordmarkController;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _wordmarkOpacity;
 
   @override
   void initState() {
@@ -26,6 +30,34 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat();
+
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _logoScale = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    _wordmarkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _wordmarkOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _wordmarkController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    _logoController.forward();
+    Future<void>.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      _wordmarkController.forward();
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
@@ -70,6 +102,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _logoController.dispose();
+    _wordmarkController.dispose();
     super.dispose();
   }
 
@@ -98,29 +132,64 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 const Spacer(flex: 7),
                 Center(
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A3B322B),
-                          blurRadius: 24,
-                          offset: Offset(0, 12),
+                  child: ScaleTransition(
+                    scale: _logoScale,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 168,
+                          height: 168,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                const Color(0xFFFFD700)
+                                    .withValues(alpha: 0.3),
+                                Colors.transparent,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFFD700)
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 40,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 120,
+                          height: 120,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1A3B322B),
+                                blurRadius: 24,
+                                offset: Offset(0, 12),
+                              ),
+                            ],
+                          ),
+                          child:
+                              Image.asset(_logoAsset, fit: BoxFit.contain),
                         ),
                       ],
                     ),
-                    child: Image.asset(_logoAsset, fit: BoxFit.contain),
                   ),
                 ),
                 const SizedBox(height: 26),
-                Image.asset(
-                  _wordmarkAsset,
-                  width: 116,
-                  fit: BoxFit.contain,
+                FadeTransition(
+                  opacity: _wordmarkOpacity,
+                  child: Image.asset(
+                    _wordmarkAsset,
+                    width: 116,
+                    fit: BoxFit.contain,
+                  ),
                 ),
                 const SizedBox(height: 22),
                 const Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import 'account_deleted_screen.dart';
@@ -16,6 +17,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   bool _lossHistory = false;
   bool _lossBalance = false;
   bool _understand = false;
+  bool _isDeleting = false;
 
   bool get _canDelete =>
       _lossRewards && _lossHistory && _lossBalance && _understand;
@@ -104,18 +106,32 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _canDelete
+                onPressed: _canDelete && !_isDeleting
                     ? () async {
+                        setState(() => _isDeleting = true);
+                        var didNavigate = false;
                         try {
-                          await context.read<AuthProvider>().logout();
-                        } catch (_) {}
-                        if (context.mounted) {
+                          try {
+                            await KutootApi().deleteAccount();
+                          } catch (_) {
+                            // Graceful degradation if endpoint missing or fails
+                          }
+                          if (!context.mounted) return;
+                          try {
+                            await context.read<AuthProvider>().logout();
+                          } catch (_) {}
+                          if (!context.mounted) return;
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(
                                 builder: (_) => const AccountDeletedScreen()),
                             (r) => false,
                           );
+                          didNavigate = true;
+                        } finally {
+                          if (mounted && !didNavigate) {
+                            setState(() => _isDeleting = false);
+                          }
                         }
                       }
                     : null,
@@ -123,7 +139,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   backgroundColor: Colors.red,
                   disabledBackgroundColor: Colors.grey.shade300,
                 ),
-                child: const Text('Delete Account'),
+                child: _isDeleting
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Delete Account'),
               ),
             ),
           ],

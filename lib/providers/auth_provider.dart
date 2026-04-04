@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../api/kutoot_api.dart';
+import '../services/device_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final _api = KutootApi();
+  final _device = DeviceService();
 
   Map<String, dynamic>? _user;
   bool _isLoading = false;
@@ -43,7 +45,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await _api.sendOtp(identifier);
+      final deviceId = await _device.getDeviceFingerprint();
+      final res = await _api.sendOtp(identifier, deviceId: deviceId);
       final wrapper =
           res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
       final data = wrapper != null && wrapper['data'] is Map
@@ -67,7 +70,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await _api.verifyOtp(identifier, otp);
+      final deviceId = await _device.getDeviceFingerprint();
+      final res = await _api.verifyOtp(identifier, otp,
+          deviceId: deviceId, deviceModel: _device.deviceModel);
       final wrapper =
           res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
       final data = wrapper != null && wrapper['data'] is Map
@@ -83,7 +88,7 @@ class AuthProvider with ChangeNotifier {
         return true;
       }
     } catch (e) {
-      _error = 'Invalid or expired OTP';
+      _error = _parseVerifyError(e);
     }
     _isLoading = false;
     notifyListeners();
@@ -102,6 +107,19 @@ class AuthProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  static String _parseVerifyError(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['message'] != null) {
+        return data['message'] as String;
+      }
+      if (e.response?.statusCode == 403) {
+        return 'This device is already linked to another account.';
+      }
+    }
+    return 'Invalid or expired OTP';
   }
 
   static String _parseOtpError(Object e) {

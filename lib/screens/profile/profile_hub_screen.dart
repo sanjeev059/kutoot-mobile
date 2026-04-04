@@ -3,6 +3,7 @@ import '../../api/kutoot_api.dart';
 import '../../services/campaign_entry_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/kutoot_bottom_nav.dart';
 import '../auth/delete_account_screen.dart';
 import '../auth/logout_confirm_screen.dart';
 import '../plans/plans_screen.dart';
@@ -104,6 +105,7 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
               border: Border.all(color: const Color(0xFFE1BEC0)),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 72,
@@ -133,40 +135,52 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PlansScreen(cityName: widget.cityName),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ProfileEditScreen()),
+                      ),
+                      icon: const Icon(Icons.edit_outlined,
+                          color: AppTheme.textPrimary),
+                      tooltip: 'Edit profile',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
                     ),
-                  ),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCDA700),
-                      borderRadius: BorderRadius.circular(99),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PlansScreen(cityName: widget.cityName),
+                        ),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCDA700),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          widget.planLabel,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 10),
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      widget.planLabel,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 10),
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          _ActionTile(
-            icon: Icons.edit,
-            title: 'Edit Profile',
-            subtitle: 'Update name and email',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
-            ),
-          ),
           _ActionTile(
             icon: Icons.help_outline_rounded,
             title: 'Support & Help',
@@ -175,19 +189,6 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
               context,
               MaterialPageRoute(builder: (_) => const ContactSupportScreen()),
             ),
-          ),
-          _ActionTile(
-            icon: Icons.location_on_outlined,
-            title: 'Current City',
-            subtitle: widget.cityName,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Current city: ${widget.cityName}'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
           ),
           const SizedBox(height: 10),
           // Upgrade Plan
@@ -326,41 +327,6 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
               ),
             ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Need Assistance?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Questions about stamps, payments, or plans?',
-                  style: TextStyle(color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const ContactSupportScreen()),
-                    ),
-                    child: const Text('Get Support'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: () => Navigator.push(
               context,
@@ -388,6 +354,12 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: KutootBottomNav(
+        activeIndex: 3,
+        cityName: widget.cityName,
+        isLoggedIn: true,
+        planLabel: widget.planLabel,
       ),
     );
   }
@@ -451,23 +423,29 @@ class _CampaignEntryCard extends StatelessWidget {
               Positioned(
                 top: 10,
                 right: 10,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFAE1E3F),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    tag,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 9,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
+                child: tag == 'ENTERED'
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: Color(0xFF4CAF50),
+                        size: 18,
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFAE1E3F),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 9,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
               ),
               Positioned(
                 left: 12,

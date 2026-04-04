@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/kutoot_api.dart';
 import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/kutoot_bottom_nav.dart';
 
 class RewardsDealsScreen extends StatefulWidget {
   final String cityName;
@@ -24,7 +25,6 @@ class RewardsDealsScreen extends StatefulWidget {
 
 class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   final _api = KutootApi();
-  String _filter = 'All';
   String? _currentPlan;
   String? _appliedCode;
   List<_RewardDeal> _apiDeals = [];
@@ -147,78 +147,20 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   List<_RewardDeal> get _allDealsSource =>
       _apiDeals.isNotEmpty ? _apiDeals : _fallbackDeals;
 
-  List<_RewardDeal> get _filtered {
-    final source = _allDealsSource;
-    if (_filter == 'Merchant Deals') {
-      return source.where((d) => d.type == _DealType.merchant).toList();
-    }
-    if (_filter == 'Bank Offers') {
-      return source.where((d) => d.type == _DealType.bank).toList();
-    }
-    return source;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final deals = _filtered;
+    final deals = _allDealsSource;
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
+      bottomNavigationBar: KutootBottomNav(
+        activeIndex: 1,
+        cityName: widget.cityName,
+        isLoggedIn: true,
+        planLabel: widget.upgradeLabel,
+      ),
       body: Column(
         children: [
           _buildHeader(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search,
-                      color: Colors.black.withValues(alpha: 0.3)),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Search brands, banks or items...',
-                    style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: ['All', 'Merchant Deals', 'Bank Offers'].map((f) {
-                final active = _filter == f;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(f),
-                    selected: active,
-                    selectedColor: AppTheme.primary,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: active ? Colors.white : AppTheme.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                    side: BorderSide(
-                      color:
-                          active ? AppTheme.primary : const Color(0xFFE1BEC0),
-                    ),
-                    onSelected: (_) => setState(() => _filter = f),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
@@ -444,11 +386,22 @@ class _DealCard extends StatelessWidget {
     required this.onApply,
   });
 
+  Color get _cardBackgroundColor {
+    switch (deal.type) {
+      case _DealType.merchant:
+        return const Color(0xFFFFF3E8);
+      case _DealType.bank:
+        return const Color(0xFFE8F0FF);
+      case _DealType.store:
+        return const Color(0xFFE8FFE8);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardBackgroundColor,
         borderRadius: BorderRadius.circular(18),
         border:
             Border.all(color: const Color(0xFFE1BEC0).withValues(alpha: 0.4)),

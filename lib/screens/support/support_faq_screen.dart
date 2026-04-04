@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import 'contact_support_screen.dart';
 
 class SupportFaqScreen extends StatefulWidget {
   const SupportFaqScreen({super.key});
@@ -11,14 +10,6 @@ class SupportFaqScreen extends StatefulWidget {
 
 class _SupportFaqScreenState extends State<SupportFaqScreen> {
   int? _activeCategoryIndex = 1;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   static const _categories = [
     _Category(icon: Icons.payments, label: 'Payments'),
@@ -118,14 +109,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
   };
 
   List<_FaqItem> get _activeFaqs {
-    final faqs = _categoryFaqs[_activeCategoryIndex ?? 1] ?? _categoryFaqs[1]!;
-    if (_searchQuery.isEmpty) return faqs;
-    final query = _searchQuery.toLowerCase();
-    return faqs
-        .where((f) =>
-            f.q.toLowerCase().contains(query) ||
-            f.a.toLowerCase().contains(query))
-        .toList();
+    return _categoryFaqs[_activeCategoryIndex ?? 1] ?? _categoryFaqs[1]!;
   }
 
   @override
@@ -140,13 +124,9 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 children: [
-                  _buildHeroSearch(),
-                  const SizedBox(height: 28),
                   _buildCategories(),
                   const SizedBox(height: 28),
                   _buildFaqList(),
-                  const SizedBox(height: 28),
-                  _buildAssistanceCard(),
                 ],
               ),
             ),
@@ -186,68 +166,9 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search, color: AppTheme.primary),
-          ),
+          const SizedBox(width: 48),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeroSearch() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
-              height: 1.15,
-              letterSpacing: -0.5,
-            ),
-            children: [
-              TextSpan(text: 'How can we\n'),
-              TextSpan(
-                text: 'help you today?',
-                style: TextStyle(color: AppTheme.primary),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.black.withOpacity(0.08)),
-          ),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (value) => setState(() => _searchQuery = value),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Search for answers...',
-              hintStyle: TextStyle(
-                color: AppTheme.outline.withValues(alpha: 0.6),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              prefixIcon: Icon(Icons.search,
-                  color: AppTheme.outline.withValues(alpha: 0.6), size: 22),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -353,89 +274,6 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
         ...List.generate(
             faqs.length, (i) => _FaqTile(q: faqs[i].q, a: faqs[i].a)),
       ],
-    );
-  }
-
-  Widget _buildAssistanceCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD5C8BE).withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -40,
-            top: -40,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.04),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Need Assistance?',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Our support team is available 24/7 to assist with any issues regarding your experience.',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ContactSupportScreen()),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryContainer,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    elevation: 4,
-                    shadowColor: AppTheme.primary.withValues(alpha: 0.2),
-                  ),
-                  child: const Text(
-                    'Get Support',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

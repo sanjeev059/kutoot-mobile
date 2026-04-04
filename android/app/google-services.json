@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1067897963238",
+    "project_id": "kutoot-34e19",
+    "storage_bucket": "kutoot-34e19.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1067897963238:android:55076c5292e4e67e42f127",
+        "android_client_info": {
+          "package_name": "com.kutoot.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgRGOyUNkjm4g1SDrtDRV5QHlBSEDP5bw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
