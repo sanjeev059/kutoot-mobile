@@ -129,7 +129,7 @@ class _NotificationCard extends StatelessWidget {
       case 'stamp':
         return const Color(0xFFFFA000);
       case 'coupon':
-        return AppTheme.secondary;
+        return AppTheme.accentWarm;
       case 'campaign':
         return AppTheme.primary;
       case 'plan':
@@ -152,7 +152,7 @@ class _NotificationCard extends StatelessWidget {
           border: Border.all(
             color: item.isRead
                 ? Colors.black.withOpacity(0.04)
-                : AppTheme.secondary.withOpacity(0.15),
+                : AppTheme.accentWarm.withOpacity(0.15),
           ),
         ),
         child: Row(

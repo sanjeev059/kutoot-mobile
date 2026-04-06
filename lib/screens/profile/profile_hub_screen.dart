@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../api/kutoot_api.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/campaign_entry_service.dart';
 import '../../theme/app_theme.dart';
@@ -8,18 +10,15 @@ import '../../utils/image_utils.dart';
 import '../../widgets/kutoot_bottom_nav.dart';
 import '../auth/delete_account_screen.dart';
 import '../auth/logout_confirm_screen.dart';
-import '../plans/plans_screen.dart';
 import '../support/contact_support_screen.dart';
 import '../profile/profile_edit_screen.dart';
 
 class ProfileHubScreen extends StatefulWidget {
   final String cityName;
-  final String planLabel;
 
   const ProfileHubScreen({
     super.key,
     required this.cityName,
-    required this.planLabel,
   });
 
   @override
@@ -99,88 +98,97 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF5E5DB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person,
-                      color: AppTheme.primary, size: 42),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              final u = auth.user;
+              final name = (u?['name']?.toString().trim().isNotEmpty ?? false)
+                  ? u!['name'].toString()
+                  : 'Member';
+              final rawPhone = u?['mobile']?.toString().trim() ??
+                  u?['phone']?.toString().trim() ??
+                  '';
+              final phone = rawPhone.isEmpty
+                  ? 'Add your number in Edit profile'
+                  : (rawPhone.startsWith('+') ? rawPhone : '+91 $rawPhone');
+              final avatarUrl = ImageUtils.resolve(u?['profile_picture_url']);
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE1BEC0)),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Alex Johnson',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        '+91 9876543210',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ProfileEditScreen()),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF5E5DB),
+                        shape: BoxShape.circle,
                       ),
-                      icon: const Icon(Icons.edit_outlined,
-                          color: AppTheme.textPrimary),
-                      tooltip: 'Edit profile',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
+                      clipBehavior: Clip.antiAlias,
+                      child: avatarUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: avatarUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => const Icon(Icons.person,
+                                  color: AppTheme.primary, size: 42),
+                              errorWidget: (_, __, ___) => const Icon(
+                                  Icons.person,
+                                  color: AppTheme.primary,
+                                  size: 42),
+                            )
+                          : const Icon(Icons.person,
+                              color: AppTheme.primary, size: 42),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            phone,
+                            style: const TextStyle(
+                                color: AppTheme.textSecondary),
+                          ),
+                        ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PlansScreen(cityName: widget.cityName),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const ProfileEditScreen()),
+                            );
+                          },
+                          icon: const Icon(Icons.edit_outlined,
+                              color: AppTheme.textPrimary),
+                          tooltip: 'Edit profile',
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
                         ),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFCDA700),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          widget.planLabel,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 10),
-                        ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           Consumer<SettingsProvider>(
@@ -259,54 +267,6 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ContactSupportScreen()),
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Upgrade Plan
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PlansScreen(cityName: widget.cityName),
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.primaryContainer],
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.workspace_premium, color: Colors.white, size: 28),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Upgrade Plan',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Get more rewards and benefits',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: Colors.white),
-                ],
-              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -427,10 +387,9 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
         ],
       ),
       bottomNavigationBar: KutootBottomNav(
-        activeIndex: 3,
+        activeIndex: 2,
         cityName: widget.cityName,
         isLoggedIn: true,
-        planLabel: widget.planLabel,
       ),
     );
   }

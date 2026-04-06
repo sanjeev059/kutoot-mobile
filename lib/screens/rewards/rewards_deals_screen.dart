@@ -1,22 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../api/kutoot_api.dart';
-import '../../services/subscription_plan_service.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/kutoot_bottom_nav.dart';
+import '../home/kinetic_home_screens.dart';
 
 class RewardsDealsScreen extends StatefulWidget {
   final String cityName;
-  final String upgradeLabel;
-  final VoidCallback? onUpgradeTap;
-  final VoidCallback? onHomeTap;
 
   const RewardsDealsScreen({
     super.key,
     required this.cityName,
-    this.upgradeLabel = 'UPGRADE',
-    this.onUpgradeTap,
-    this.onHomeTap,
   });
 
   @override
@@ -25,7 +21,6 @@ class RewardsDealsScreen extends StatefulWidget {
 
 class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   final _api = KutootApi();
-  String? _currentPlan;
   String? _appliedCode;
   List<_RewardDeal> _apiDeals = [];
   bool _loaded = false;
@@ -34,7 +29,6 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPlan();
     _fetchDeals();
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchDeals());
@@ -44,12 +38,6 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadPlan() async {
-    final plan = await SubscriptionPlanService.getCurrentPlanName();
-    if (!mounted) return;
-    setState(() => _currentPlan = plan);
   }
 
   Future<void> _fetchDeals() async {
@@ -126,24 +114,6 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
     if (mounted) setState(() => _loaded = true);
   }
 
-  int _planRank(String? plan) {
-    switch ((plan ?? '').toUpperCase()) {
-      case 'BASIC':
-        return 1;
-      case 'PRO':
-        return 2;
-      case 'VIP':
-        return 3;
-      case 'ELITE':
-        return 4;
-      default:
-        return 0;
-    }
-  }
-
-  bool _canApply(String requiredPlan) =>
-      _planRank(_currentPlan) >= _planRank(requiredPlan);
-
   List<_RewardDeal> get _allDealsSource =>
       _apiDeals.isNotEmpty ? _apiDeals : _fallbackDeals;
 
@@ -152,11 +122,14 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
     final deals = _allDealsSource;
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
-      bottomNavigationBar: KutootBottomNav(
-        activeIndex: 1,
-        cityName: widget.cityName,
-        isLoggedIn: true,
-        planLabel: widget.upgradeLabel,
+      bottomNavigationBar: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          return KutootBottomNav(
+            activeIndex: 1,
+            cityName: widget.cityName,
+            isLoggedIn: auth.isLoggedIn,
+          );
+        },
       ),
       body: Column(
         children: [
@@ -168,7 +141,7 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, i) {
                 final d = deals[i];
-                final canApply = _canApply(d.requiredPlan);
+                const canApply = true;
                 final applied = _appliedCode == d.code;
                 return _DealCard(
                   deal: d,
@@ -190,88 +163,78 @@ class _RewardsDealsScreenState extends State<RewardsDealsScreen> {
     );
   }
 
+  void _onBackOrHome() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final auth = context.read<AuthProvider>();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => auth.isLoggedIn
+            ? LoggedInHomeScreen(cityName: widget.cityName)
+            : GuestHomeScreen(cityName: widget.cityName),
+      ),
+      (r) => false,
+    );
+  }
+
   Widget _buildHeader() {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: SizedBox(
-          height: 48,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Center(
-                  child: Image.asset(AppTheme.logoAsset,
-                      height: 40, fit: BoxFit.contain),
+        padding: const EdgeInsets.fromLTRB(8, 8, 16, 4),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+              onPressed: _onBackOrHome,
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 40, minHeight: 40),
+            ),
+            Expanded(
+              child: Center(
+                child: Image.asset(
+                  AppTheme.logoAsset,
+                  height: 32,
+                  fit: BoxFit.contain,
                 ),
               ),
-              Row(
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color:
+                      AppTheme.secondaryContainer.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
+                  const Icon(Icons.location_on,
+                      size: 14, color: AppTheme.secondaryContainer),
                   const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                          color: AppTheme.secondaryContainer.withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_on,
-                            size: 14, color: AppTheme.secondaryContainer),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${widget.cityName} ▾',
-                          style: const TextStyle(
-                            color: AppTheme.secondaryContainer,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  InkWell(
-                    onTap: widget.onUpgradeTap,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.25),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        widget.upgradeLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 1.2,
-                        ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 110),
+                    child: Text(
+                      '${widget.cityName} ▾',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.secondaryContainer,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

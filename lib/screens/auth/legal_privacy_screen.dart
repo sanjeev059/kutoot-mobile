@@ -32,7 +32,7 @@ class LegalPrivacyScreen extends StatelessWidget {
                         Text(
                           'LEGAL NOTICE',
                           style: TextStyle(
-                            color: AppTheme.secondary,
+                            color: AppTheme.accentWarm,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.7,
@@ -99,12 +99,12 @@ class LegalPrivacyScreen extends StatelessWidget {
                     title: 'App Activity',
                     body:
                         'Interactions and feature usage help us improve discovery and offer relevance.',
-                    leftBorderColor: AppTheme.secondary,
+                    leftBorderColor: AppTheme.accentWarm,
                   ),
                   const SizedBox(height: 20),
                   _BlockTitle(
                       icon: Icons.verified_user_rounded,
-                      color: AppTheme.secondary,
+                      color: AppTheme.accentWarm,
                       title: 'Your Rights'),
                   const SizedBox(height: 10),
                   const _RightRow(
@@ -287,7 +287,7 @@ class _RightRow extends StatelessWidget {
               color: const Color(0xFFF5E5DB),
               borderRadius: BorderRadius.circular(19),
             ),
-            child: Icon(icon, size: 20, color: AppTheme.secondary),
+            child: Icon(icon, size: 20, color: AppTheme.accentWarm),
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -83,6 +83,7 @@ class AuthProvider with ChangeNotifier {
         _user = data['user'] is Map
             ? Map<String, dynamic>.from(data['user'] as Map)
             : null;
+        _enrichPhoneFromIdentifier(identifier);
         _isLoading = false;
         notifyListeners();
         return true;
@@ -107,6 +108,28 @@ class AuthProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Merge fields into the cached user (e.g. after profile update API).
+  void mergeUserFields(Map<String, dynamic> patch) {
+    if (_user == null) {
+      _user = Map<String, dynamic>.from(patch);
+    } else {
+      _user = {..._user!, ...patch};
+    }
+    notifyListeners();
+  }
+
+  void _enrichPhoneFromIdentifier(String identifier) {
+    if (_user == null) return;
+    final mobile = _user!['mobile']?.toString().trim() ?? '';
+    final phone = _user!['phone']?.toString().trim() ?? '';
+    if (mobile.isNotEmpty || phone.isNotEmpty) return;
+    final raw = identifier.trim().replaceAll(RegExp(r'\s'), '');
+    if (raw.isEmpty || raw.contains('@')) return;
+    if (RegExp(r'^\+?\d{7,15}$').hasMatch(raw)) {
+      _user!['mobile'] = raw;
+    }
   }
 
   static String _parseVerifyError(Object e) {

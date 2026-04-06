@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import '../api/kutoot_api.dart';
+import '../navigation/app_navigator.dart';
 import '../providers/auth_provider.dart';
 import '../services/location_bootstrap_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import 'home/kinetic_home_screens.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -62,6 +65,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
+      KutootApi.onSessionExpired = () async {
+        final ctx = appNavigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          await Provider.of<AuthProvider>(ctx, listen: false).logout();
+        }
+      };
 
       // Run auth check and splash delay in parallel
       await Future.wait([
@@ -240,7 +249,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 0.22 + (0.18 * _controller.value);
                             return FractionallySizedBox(
                               widthFactor: widthFactor,
-                              child: Container(color: const Color(0xFF8A002B)),
+                              child: Container(color: AppTheme.primary),
                             );
                           },
                         ),

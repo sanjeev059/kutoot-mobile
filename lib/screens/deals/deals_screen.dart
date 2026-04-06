@@ -183,8 +183,6 @@ class _DealsScreenState extends State<DealsScreen> {
                                   MaterialPageRoute(
                                       builder: (_) => CampaignsScreen(
                                             cityName: '',
-                                            upgradeLabel: 'GO PRO',
-                                            onUpgradeTap: () {},
                                           ))),
                             );
                           }
@@ -198,8 +196,6 @@ class _DealsScreenState extends State<DealsScreen> {
                                 MaterialPageRoute(
                                     builder: (_) => CampaignsScreen(
                                           cityName: '',
-                                          upgradeLabel: 'GO PRO',
-                                          onUpgradeTap: () {},
                                         ))),
                           );
                         },

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/home/kinetic_home_screens.dart';
-import '../screens/plans/plans_screen.dart';
 import '../screens/profile/profile_hub_screen.dart';
 import '../screens/rewards/rewards_deals_screen.dart';
 
@@ -10,14 +9,12 @@ class KutootBottomNav extends StatelessWidget {
   final int activeIndex;
   final String cityName;
   final bool isLoggedIn;
-  final String planLabel;
 
   const KutootBottomNav({
     super.key,
     required this.activeIndex,
     required this.cityName,
     required this.isLoggedIn,
-    required this.planLabel,
   });
 
   void _navigate(BuildContext context, int i) {
@@ -37,10 +34,7 @@ class KutootBottomNav extends StatelessWidget {
         );
         return;
       case 1:
-        screen = RewardsDealsScreen(
-          cityName: cityName,
-          upgradeLabel: planLabel,
-        );
+        screen = RewardsDealsScreen(cityName: cityName);
         break;
       case 2:
         if (!isLoggedIn) {
@@ -48,15 +42,7 @@ class KutootBottomNav extends StatelessWidget {
               context, MaterialPageRoute(builder: (_) => const LoginScreen()));
           return;
         }
-        screen = PlansScreen(cityName: cityName);
-        break;
-      case 3:
-        if (!isLoggedIn) {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-          return;
-        }
-        screen = ProfileHubScreen(cityName: cityName, planLabel: planLabel);
+        screen = ProfileHubScreen(cityName: cityName);
         break;
       default:
         return;
@@ -64,22 +50,16 @@ class KutootBottomNav extends StatelessWidget {
 
     Navigator.pushReplacement(
       context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => screen,
-        transitionDuration: const Duration(milliseconds: 150),
-        transitionsBuilder: (_, anim, __, child) =>
-            FadeTransition(opacity: anim, child: child),
-      ),
+      MaterialPageRoute<void>(builder: (_) => screen),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const items = ['HOME', 'DROPS', 'PLANS', 'PROFILE'];
+    const items = ['HOME', 'DROPS', 'PROFILE'];
     const icons = [
       Icons.home_rounded,
       Icons.local_offer_rounded,
-      Icons.confirmation_num_rounded,
       Icons.person_rounded,
     ];
     final bottomPad = MediaQuery.of(context).padding.bottom;
@@ -90,8 +70,6 @@ class KutootBottomNav extends StatelessWidget {
     final barBorder = dark
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.05);
-    const accentGreen = Color(0xFF1DB954);
-
     return Container(
       padding: EdgeInsets.only(bottom: bottomPad > 0 ? bottomPad : 8),
       margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
@@ -120,19 +98,17 @@ class KutootBottomNav extends StatelessWidget {
                           horizontal: 14, vertical: 6),
                       decoration: active
                           ? BoxDecoration(
-                              color: dark
-                                  ? accentGreen.withValues(alpha: 0.2)
-                                  : const Color(0xFFE6F54D)
-                                      .withValues(alpha: 0.25),
+                              color: AppTheme.primary
+                                  .withValues(alpha: dark ? 0.22 : 0.12),
                               borderRadius: BorderRadius.circular(16),
                             )
                           : null,
                       child: Icon(icons[i],
                           color: active
-                              ? (dark ? accentGreen : AppTheme.primary)
+                              ? AppTheme.primary
                               : (dark
                                   ? const Color(0xFF8E8E93)
-                                  : const Color(0xFF9A9A9A)),
+                                  : AppTheme.textSecondary),
                           size: 24),
                     ),
                     const SizedBox(height: 1),
@@ -142,10 +118,10 @@ class KutootBottomNav extends StatelessWidget {
                             fontWeight:
                                 active ? FontWeight.w900 : FontWeight.w700,
                             color: active
-                                ? (dark ? accentGreen : AppTheme.primary)
+                                ? AppTheme.primary
                                 : (dark
                                     ? const Color(0xFF8E8E93)
-                                    : const Color(0xFF9A9A9A)))),
+                                    : AppTheme.textSecondary))),
                   ],
                 ),
               ),

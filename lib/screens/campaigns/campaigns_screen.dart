@@ -7,16 +7,16 @@ const String _kLogoAsset = 'assets/images/k_logo.png';
 
 class CampaignsScreen extends StatefulWidget {
   final String cityName;
-  final String upgradeLabel;
   final int initialTabIndex;
-  final VoidCallback onUpgradeTap;
+  final String? upgradeLabel;
+  final VoidCallback? onUpgradeTap;
 
   const CampaignsScreen({
     super.key,
     required this.cityName,
-    required this.upgradeLabel,
-    required this.onUpgradeTap,
     this.initialTabIndex = 0,
+    this.upgradeLabel,
+    this.onUpgradeTap,
   });
 
   @override
@@ -171,9 +171,13 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     try {
       final response = await _api.participateInCampaign(id);
       final body = response.data;
-      String msg = 'Campaign entry confirmed via Kutoot engagement.';
+      String msg = 'You\'re in this Kutoot campaign.';
       if (body is Map && body['message'] != null) {
         msg = body['message'].toString();
+      }
+      final title = campaign.title.trim();
+      if (title.isNotEmpty) {
+        msg = '$msg — $title';
       }
       if (!mounted) return;
       _showInfo(msg);
@@ -193,13 +197,13 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
 class _CampaignHeader extends StatelessWidget {
   final String cityName;
-  final String rightLabel;
-  final VoidCallback onRightTap;
+  final String? rightLabel;
+  final VoidCallback? onRightTap;
 
   const _CampaignHeader({
     required this.cityName,
-    required this.rightLabel,
-    required this.onRightTap,
+    this.rightLabel,
+    this.onRightTap,
   });
 
   @override
@@ -220,20 +224,20 @@ class _CampaignHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withValues(alpha: 0.10),
+              color: AppTheme.accentWarm.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
               border:
-                  Border.all(color: AppTheme.secondary.withValues(alpha: 0.20)),
+                  Border.all(color: AppTheme.accentWarm.withValues(alpha: 0.20)),
             ),
             child: Row(
               children: [
                 const Icon(Icons.location_on,
-                    size: 15, color: AppTheme.secondary),
+                    size: 15, color: AppTheme.accentWarm),
                 const SizedBox(width: 2),
                 Text(
                   '$cityName ▾',
                   style: const TextStyle(
-                    color: AppTheme.secondary,
+                    color: AppTheme.accentWarm,
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                   ),
@@ -250,26 +254,32 @@ class _CampaignHeader extends StatelessWidget {
               ),
             ),
           ),
-          InkWell(
-            onTap: onRightTap,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                rightLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w800,
+          if (rightLabel != null &&
+              rightLabel!.isNotEmpty &&
+              onRightTap != null)
+            InkWell(
+              onTap: onRightTap,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  rightLabel!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-          ),
+            )
+          else
+            const SizedBox(width: 8),
         ],
       ),
     );
@@ -418,7 +428,7 @@ class _CampaignTicket extends StatelessWidget {
                           'Your Engagement',
                           style: TextStyle(
                             fontSize: 9,
-                            color: AppTheme.secondary,
+                            color: AppTheme.accentWarm,
                             fontWeight: FontWeight.w800,
                           ),
                         ),

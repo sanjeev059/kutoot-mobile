@@ -8,6 +8,9 @@ class KutootApi {
   static final KutootApi _instance = KutootApi._();
   factory KutootApi() => _instance;
 
+  /// Called after a 401 clears the stored token (e.g. sync [AuthProvider]).
+  static void Function()? onSessionExpired;
+
   late final Dio _dio;
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: false),
@@ -57,6 +60,9 @@ class KutootApi {
           try {
             await _storage.delete(key: 'auth_token');
             await _storage.delete(key: 'user_data');
+          } catch (_) {}
+          try {
+            onSessionExpired?.call();
           } catch (_) {}
         }
         return handler.next(err);
@@ -123,7 +129,7 @@ class KutootApi {
   Future<Response> getProfile() => _dio.get('/profile');
 
   Future<Response> updateProfile(Map<String, dynamic> data) =>
-      _dio.put('/auth/profile', data: data);
+      _dio.put('/profile', data: data);
 
   Future<Response> updateAvatar(FormData data) =>
       _dio.post('/profile/avatar', data: data);

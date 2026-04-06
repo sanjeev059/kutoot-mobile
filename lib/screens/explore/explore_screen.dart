@@ -33,6 +33,8 @@ class _ExploreScreenState extends State<ExploreScreen>
   String? _stampCampaignName;
   bool _loading = true;
   bool _hasLoadedOnce = false;
+  int _selectedCategoryIndex = 0;
+  bool _loadingMerchants = false;
 
   static const _fallbackCategories = [
     ('Food', Icons.restaurant_rounded),
@@ -69,46 +71,189 @@ class _ExploreScreenState extends State<ExploreScreen>
     return Icons.grid_view_rounded;
   }
 
-  List<Widget> get _categoryChips {
-    final items = _categories.isEmpty
-        ? _fallbackCategories.map((c) => (c.$1, c.$2, null as String?)).toList()
-        : _categories.map((c) {
-            final m = c is Map ? c : {};
-            final imgUrl = ImageUtils.fromCategory(m);
-            return (
-              m['name']?.toString() ?? 'More',
-              _categoryIcon(m['name']?.toString() ?? ''),
-              imgUrl
-            );
-          }).toList();
-    return items.map((c) {
-      final avatar = c.$3 != null && c.$3!.isNotEmpty
+  Future<void> _fetchMerchantsForCategoryIndex(int index) async {
+    if (!mounted) return;
+    setState(() {
+      _selectedCategoryIndex = index;
+      _loadingMerchants = true;
+    });
+    List<dynamic> merchants = [];
+    try {
+      if (_categories.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _merchants = [];
+            _loadingMerchants = false;
+          });
+        }
+        return;
+      }
+      final safe = index.clamp(0, _categories.length - 1);
+      final cat = _categories[safe];
+      final catId = cat is Map
+          ? (cat['id'] is int
+              ? cat['id'] as int
+              : int.tryParse(cat['id']?.toString() ?? ''))
+          : null;
+      if (catId != null) {
+        final storesRes =
+            await _api.getStoresByCategory(catId, params: {'per_page': 10});
+        if (storesRes.data is Map &&
+            (storesRes.data as Map)['data'] != null) {
+          merchants = (storesRes.data as Map)['data'] is List
+              ? (storesRes.data as Map)['data'] as List
+              : [];
+        }
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _merchants = merchants;
+      _loadingMerchants = false;
+    });
+  }
+
+  List<Widget> _buildTopFilterChips() {
+    if (_categories.isEmpty) {
+      return _fallbackCategories.asMap().entries.map((e) {
+        final i = e.key;
+        final c = e.value;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: FilterChip(
+            avatar: Icon(c.$2, size: 20, color: AppTheme.primary),
+            label: Text(c.$1),
+            selected: _selectedCategoryIndex == i,
+            onSelected: (sel) {
+              if (sel) setState(() => _selectedCategoryIndex = i);
+            },
+            selectedColor: AppTheme.primary.withOpacity(0.15),
+            backgroundColor: AppTheme.background,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          ),
+        );
+      }).toList();
+    }
+    return _categories.asMap().entries.map((e) {
+      final i = e.key;
+      final c = e.value is Map ? e.value as Map : {};
+      final imgUrl = ImageUtils.fromCategory(c);
+      final name = c['name']?.toString() ?? 'More';
+      final icon = _categoryIcon(name);
+      final avatar = imgUrl != null && imgUrl.isNotEmpty
           ? ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: CachedNetworkImage(
-                imageUrl: c.$3!,
+                imageUrl: imgUrl,
                 width: 24,
                 height: 24,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
-                    Icon(c.$2, size: 20, color: AppTheme.primary),
+                    Icon(icon, size: 20, color: AppTheme.primary),
                 errorWidget: (_, __, ___) =>
-                    Icon(c.$2, size: 20, color: AppTheme.primary),
+                    Icon(icon, size: 20, color: AppTheme.primary),
               ),
             )
-          : Icon(c.$2, size: 20, color: AppTheme.primary);
+          : Icon(icon, size: 20, color: AppTheme.primary);
       return Padding(
         padding: const EdgeInsets.only(right: 8),
         child: FilterChip(
           avatar: avatar,
-          label: Text(c.$1),
-          onSelected: (_) {},
+          label: Text(name),
+          selected: _selectedCategoryIndex == i,
+          onSelected: (sel) {
+            if (sel) _fetchMerchantsForCategoryIndex(i);
+          },
           selectedColor: AppTheme.primary.withOpacity(0.15),
           backgroundColor: AppTheme.background,
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         ),
       );
     }).toList();
+  }
+
+  Widget _buildCategoryMerchantsPreview(BuildContext context) {
+    if (_loadingMerchants) {
+      return ListView(
+        children: List.generate(
+          3,
+          (_) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _shimmerStoreCard(),
+          ),
+        ),
+      );
+    }
+    if (_categories.isEmpty) {
+      return ListView(
+        children: _fallbackMerchants
+            .map(
+              (m) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _StoreListCard(
+                  name: m.$1,
+                  rating: m.$2,
+                  distance: m.$3,
+                  stamps: m.$4,
+                  imageUrl: null,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StoreProfileScreen(
+                        store: {'name': m.$1, 'category': m.$5},
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      );
+    }
+    if (_merchants.isEmpty) {
+      return Center(
+        child: Text(
+          'No stores in this category yet',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: _merchants.length,
+      itemBuilder: (context, i) {
+        final m = _merchants[i];
+        final map = m is Map ? m : {};
+        final name = map['branch_name'] ??
+            map['merchant']?['name'] ??
+            'Store';
+        final merchant = map['merchant'] is Map ? map['merchant'] as Map : {};
+        final category = merchant['name'] ?? 'Store';
+        final rating = (map['star_rating'] ?? 4.5) is num
+            ? (map['star_rating'] as num).toDouble()
+            : 4.5;
+        final imgUrl = ImageUtils.fromStore(map);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _StoreListCard(
+            name: name is String ? name : name.toString(),
+            rating: rating,
+            distance: 'Nearby',
+            stamps: 'Earn stamps',
+            imageUrl: imgUrl?.isNotEmpty == true ? imgUrl : null,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StoreProfileScreen(store: {
+                  'name': name,
+                  'category': category,
+                  'store': map,
+                }),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _load() async {
@@ -179,40 +324,18 @@ class _ExploreScreenState extends State<ExploreScreen>
         }
       }
 
-      List<dynamic> merchants = [];
-      if (categories.isNotEmpty) {
-        final first = categories[0];
-        final catId = first is Map
-            ? (first['id'] is int
-                ? first['id']
-                : int.tryParse(first['id'].toString()))
-            : null;
-        if (catId != null) {
-          try {
-            final storesRes =
-                await _api.getStoresByCategory(catId, params: {'per_page': 6});
-            if (storesRes.data is Map &&
-                (storesRes.data as Map)['data'] != null) {
-              merchants = (storesRes.data as Map)['data'] is List
-                  ? (storesRes.data as Map)['data'] as List
-                  : [];
-            }
-          } catch (_) {}
-        }
-      }
-
       if (mounted) {
         setState(() {
           _banners = banners;
           _campaigns = campaigns;
           _categories = categories;
-          _merchants = merchants;
           _stampProgress = stampProgress;
           _stampTotal = stampTotal > 0 ? stampTotal : 10;
           _stampCampaignName = stampCampaignName;
           _loading = false;
           _hasLoadedOnce = true;
         });
+        await _fetchMerchantsForCategoryIndex(0);
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -254,8 +377,24 @@ class _ExploreScreenState extends State<ExploreScreen>
                       height: 44,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
-                        children: _categoryChips,
+                        children: _buildTopFilterChips(),
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Stores in this category',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 220,
+                      child: _buildCategoryMerchantsPreview(context),
                     ),
                   ],
                 ),
@@ -417,8 +556,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: 'MUMBAI',
-                            upgradeLabel: 'UPGRADE',
-                            onUpgradeTap: () {},
                             initialTabIndex: 0,
                           ),
                         ),
@@ -432,8 +569,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: 'MUMBAI',
-                            upgradeLabel: 'UPGRADE',
-                            onUpgradeTap: () {},
                             initialTabIndex: 1,
                           ),
                         ),
@@ -451,13 +586,29 @@ class _ExploreScreenState extends State<ExploreScreen>
                   runSpacing: 10,
                   children: _categories.isEmpty
                       ? _fallbackCategories
-                          .map((c) => _CategoryChip(icon: c.$2, label: c.$1))
+                          .asMap()
+                          .entries
+                          .map(
+                            (e) => _CategoryChip(
+                              icon: e.value.$2,
+                              label: e.value.$1,
+                              selected: _selectedCategoryIndex == e.key,
+                              onSelected: () =>
+                                  setState(() => _selectedCategoryIndex = e.key),
+                            ),
+                          )
                           .toList()
-                      : _categories.map((c) {
-                          final m = c is Map ? c : {};
+                      : _categories.asMap().entries.map((e) {
+                          final i = e.key;
+                          final m = e.value is Map ? e.value as Map : {};
                           return _CategoryChip(
-                              icon: _categoryIcon(m['name']?.toString() ?? ''),
-                              label: m['name']?.toString() ?? 'More');
+                            icon:
+                                _categoryIcon(m['name']?.toString() ?? ''),
+                            label: m['name']?.toString() ?? 'More',
+                            selected: _selectedCategoryIndex == i,
+                            onSelected: () =>
+                                _fetchMerchantsForCategoryIndex(i),
+                          );
                         }).toList(),
                 ),
               ),
@@ -482,8 +633,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                             MaterialPageRoute(
                               builder: (_) => CampaignsScreen(
                                 cityName: 'MUMBAI',
-                                upgradeLabel: 'UPGRADE',
-                                onUpgradeTap: () {},
                                 initialTabIndex: 0,
                               ),
                             ),
@@ -513,8 +662,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                                       MaterialPageRoute(
                                         builder: (_) => CampaignsScreen(
                                           cityName: 'MUMBAI',
-                                          upgradeLabel: 'UPGRADE',
-                                          onUpgradeTap: () {},
                                           initialTabIndex: 1,
                                         ),
                                       ),
@@ -629,78 +776,6 @@ class _ExploreScreenState extends State<ExploreScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Nearby Merchants',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (_loading && _merchants.isEmpty)
-                      ...List.generate(
-                          3,
-                          (_) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _shimmerStoreCard(),
-                              ))
-                    else if (_merchants.isEmpty)
-                      ..._fallbackMerchants.map((m) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _StoreListCard(
-                              name: m.$1,
-                              rating: m.$2,
-                              distance: m.$3,
-                              stamps: m.$4,
-                              imageUrl: null,
-                              onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => StoreProfileScreen(
-                                              store: {
-                                                'name': m.$1,
-                                                'category': m.$5
-                                              }))),
-                            ),
-                          ))
-                    else
-                      ..._merchants.map((m) {
-                        final map = m is Map ? m : {};
-                        final name = map['branch_name'] ??
-                            map['merchant']?['name'] ??
-                            'Store';
-                        final merchant = map['merchant'] is Map
-                            ? map['merchant'] as Map
-                            : {};
-                        final category = merchant['name'] ?? 'Store';
-                        final rating = (map['star_rating'] ?? 4.5) is num
-                            ? (map['star_rating'] as num).toDouble()
-                            : 4.5;
-                        final imgUrl = ImageUtils.fromStore(map);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _StoreListCard(
-                            name: name is String ? name : name.toString(),
-                            rating: rating,
-                            distance: 'Nearby',
-                            stamps: 'Earn stamps',
-                            imageUrl:
-                                imgUrl?.isNotEmpty == true ? imgUrl : null,
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => StoreProfileScreen(store: {
-                                          'name': name,
-                                          'category': category,
-                                          'store': map
-                                        }))),
-                          ),
-                        );
-                      }),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -994,15 +1069,25 @@ class _QuickAction extends StatelessWidget {
 class _CategoryChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool selected;
+  final VoidCallback onSelected;
 
-  const _CategoryChip({required this.icon, required this.label});
+  const _CategoryChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return FilterChip(
       avatar: Icon(icon, size: 20, color: AppTheme.primary),
       label: Text(label),
-      onSelected: (_) {},
+      selected: selected,
+      onSelected: (v) {
+        if (v) onSelected();
+      },
       selectedColor: AppTheme.primary.withOpacity(0.2),
     );
   }

@@ -46,7 +46,7 @@ class _LegalLoadingScreenState extends State<LegalLoadingScreen> {
               width: 260,
               height: 260,
               decoration: BoxDecoration(
-                color: AppTheme.secondary.withOpacity(0.05),
+                color: AppTheme.accentWarm.withOpacity(0.05),
                 shape: BoxShape.circle,
               ),
             ),

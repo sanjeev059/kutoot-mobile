@@ -234,7 +234,7 @@ class _SupportFaqScreenState extends State<SupportFaqScreen> {
                       ),
                       child: Icon(
                         cat.icon,
-                        color: active ? Colors.white : AppTheme.secondary,
+                        color: active ? Colors.white : AppTheme.accentWarm,
                         size: 20,
                       ),
                     ),

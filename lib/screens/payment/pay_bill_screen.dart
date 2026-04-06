@@ -1,9 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
 import '../../services/campaign_entry_service.dart';
-import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 
@@ -32,11 +32,8 @@ class _PayBillScreenState extends State<PayBillScreen> {
   List<Map<String, dynamic>> _campaigns = [];
   int? _selectedCampaignId;
   int? _transactionId;
-  String? _currentPlan;
-  String? _selectedUpgradePlan;
   String? _selectedCouponCode;
   bool _addDonation = true;
-  bool _includeUpgradeInBill = false;
 
   @override
   void initState() {
@@ -46,7 +43,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
-    _loadPlan();
     _loadCampaigns();
   }
 
@@ -56,12 +52,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
     _amountController.dispose();
     _dealsScrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadPlan() async {
-    final plan = await SubscriptionPlanService.getCurrentPlanName();
-    if (!mounted) return;
-    setState(() => _currentPlan = plan);
   }
 
   Future<void> _loadCampaigns() async {
@@ -92,46 +82,8 @@ class _PayBillScreenState extends State<PayBillScreen> {
     }
   }
 
-  int _planRank(String? plan) {
-    switch ((plan ?? '').toUpperCase()) {
-      case 'BASIC':
-        return 1;
-      case 'PRO':
-        return 2;
-      case 'VIP':
-        return 3;
-      case 'ELITE':
-        return 4;
-      default:
-        return 0;
-    }
-  }
-
-  int _planFee(String? plan) {
-    switch ((plan ?? '').toUpperCase()) {
-      case 'BASIC':
-        return 149;
-      case 'PRO':
-        return 399;
-      case 'VIP':
-        return 799;
-      case 'ELITE':
-        return 1499;
-      default:
-        return 0;
-    }
-  }
-
-  String _effectivePlan() {
-    if (_includeUpgradeInBill && (_selectedUpgradePlan ?? '').isNotEmpty) {
-      return _selectedUpgradePlan!;
-    }
-    return _currentPlan ?? 'FREE';
-  }
-
   int _platformFee(double amount) {
-    final effectivePlanRank = _planRank(_effectivePlan());
-    if (effectivePlanRank > 0) return 10;
+    if (kDebugMode) return 1;
     if (amount >= 1000) return 20;
     return 30;
   }
@@ -174,14 +126,13 @@ class _PayBillScreenState extends State<PayBillScreen> {
   }
 
   bool _canUseCoupon(_CouponOption coupon) {
-    return _planRank(_effectivePlan()) >= _planRank(coupon.minPlan);
+    return true;
   }
 
   _BillBreakdown _calculateBreakdown() {
     final amount = _readAmount();
     final subtotal = amount.clamp(0, double.infinity).toDouble();
-    final selectedPlanFee =
-        _includeUpgradeInBill ? _planFee(_selectedUpgradePlan) : 0;
+    const selectedPlanFee = 0;
     final platformFee = _platformFee(subtotal);
     const storeHandling = 3;
     final donation = _addDonation ? 3 : 0;
@@ -193,7 +144,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
       } else {
         couponDiscount = coupon.value.round();
       }
-      // Protect business cuts first: discount cannot eat fees or plan.
+      // Protect business cuts first: discount cannot eat fees.
       final maxAllowed = subtotal.round();
       if (couponDiscount > maxAllowed) {
         couponDiscount = maxAllowed;
@@ -220,13 +171,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
     final breakdown = _calculateBreakdown();
     final amount = breakdown.payable;
 
-    if (_includeUpgradeInBill && (_selectedUpgradePlan ?? '').isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a plan upgrade to continue')),
-      );
-      return;
-    }
-
     final merchantId = _readInt(widget.merchantLocation['id']) ??
         _readInt(widget.merchantLocation['merchant_location_id']) ??
         _readInt(widget.merchantLocation['location_id']);
@@ -252,10 +196,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
       await Future<void>.delayed(const Duration(milliseconds: 850));
       if (!mounted) return;
       setState(() => _paying = false);
-      if (_includeUpgradeInBill && (_selectedUpgradePlan ?? '').isNotEmpty) {
-        await SubscriptionPlanService.setCurrentPlanName(_selectedUpgradePlan!);
-        if (!mounted) return;
-      }
       final selectedCampaign = _campaigns.where((c) {
         final id = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
         return id == _selectedCampaignId;
@@ -291,7 +231,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
         'bill_amount': breakdown.baseBill,
         'coupon_code': _selectedCouponCode,
         'coupon_discount': breakdown.couponDiscount,
-        'plan_name': _effectivePlan(),
+        'plan_name': 'FREE',
         'plan_upgrade_fee': breakdown.planUpgradeFee,
         'platform_fee': breakdown.platformFee,
         'store_handling_fee': breakdown.storeHandlingFee,
@@ -358,7 +298,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
         'name': order['merchant_name'] ?? 'Kutoot',
         'description': 'Bill Payment',
         'order_id': orderId,
-        'theme': {'color': '#8A002B'},
+        'theme': {'color': '#E23744'},
       });
     } catch (e) {
       if (!mounted) return;
@@ -413,10 +353,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
           ),
         ),
       );
-      if (_includeUpgradeInBill && (_selectedUpgradePlan ?? '').isNotEmpty) {
-        await SubscriptionPlanService.setCurrentPlanName(_selectedUpgradePlan!);
-        if (!mounted) return;
-      }
       if (!mounted) return;
       await _showRatingDialog();
       if (!mounted) return;
@@ -712,30 +648,14 @@ class _PayBillScreenState extends State<PayBillScreen> {
                   onTap: () {
                     if (selected) {
                       setState(() => _selectedCouponCode = null);
-                    } else if (eligible) {
-                      setState(() => _selectedCouponCode = c.code);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'This coupon requires ${c.minPlan} plan or above.'),
-                        ),
-                      );
+                      setState(() => _selectedCouponCode = c.code);
                     }
                   },
                 );
               },
             ),
           ),
-          if (_selectedCoupon() != null && !_canUseCoupon(_selectedCoupon()!))
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'Selected coupon requires higher plan.',
-                style: TextStyle(
-                    color: Color(0xFFBA1A1A), fontWeight: FontWeight.w700),
-              ),
-            ),
           const SizedBox(height: 14),
           Text('Apply to Reward',
               style: const TextStyle(
@@ -779,7 +699,8 @@ class _PayBillScreenState extends State<PayBillScreen> {
             child: Column(
               children: [
                 _line('Bill amount', breakdown.baseBill),
-                _line('Plan upgrade', breakdown.planUpgradeFee),
+                if (breakdown.planUpgradeFee > 0)
+                  _line('Plan upgrade', breakdown.planUpgradeFee),
                 _line('Platform fee', breakdown.platformFee),
                 _line('Store handling', breakdown.storeHandlingFee),
                 _line('Donation', breakdown.donation),
@@ -808,31 +729,6 @@ class _PayBillScreenState extends State<PayBillScreen> {
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
           ),
-          SwitchListTile(
-            value: _includeUpgradeInBill,
-            onChanged: (v) => setState(() => _includeUpgradeInBill = v),
-            title: const Text('Add plan upgrade in this bill'),
-            subtitle: Text('Current plan: ${_currentPlan ?? 'FREE'}'),
-            contentPadding: EdgeInsets.zero,
-          ),
-          if (_includeUpgradeInBill)
-            Wrap(
-              spacing: 8,
-              children: const [
-                _PlanChoice(plan: 'BASIC', fee: 149),
-                _PlanChoice(plan: 'PRO', fee: 399),
-                _PlanChoice(plan: 'VIP', fee: 799),
-                _PlanChoice(plan: 'ELITE', fee: 1499),
-              ].map((p) {
-                final selected = _selectedUpgradePlan == p.plan;
-                return ChoiceChip(
-                  selected: selected,
-                  label: Text('${p.plan} • ₹${p.fee}'),
-                  onSelected: (_) =>
-                      setState(() => _selectedUpgradePlan = p.plan),
-                );
-              }).toList(),
-            ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -1033,7 +929,7 @@ class _DealCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '${coupon.minPlan}+',
+                  'OFFER',
                   style: TextStyle(
                     color: selected ? Colors.white70 : AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -1193,12 +1089,6 @@ class _CampaignRewardCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PlanChoice {
-  final String plan;
-  final int fee;
-  const _PlanChoice({required this.plan, required this.fee});
 }
 
 enum _DiscountType { flat, percent }

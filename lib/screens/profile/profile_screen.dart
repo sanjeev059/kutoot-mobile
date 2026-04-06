@@ -6,7 +6,6 @@ import '../../utils/image_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/logout_confirmation_dialog.dart';
 import 'profile_edit_screen.dart';
-import '../subscriptions/subscriptions_screen.dart';
 import '../wallet/wallet_screen.dart';
 import '../transactions/transactions_screen.dart';
 import '../payment/payment_methods_screen.dart';
@@ -105,13 +104,6 @@ class ProfileScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                       builder: (_) => const ProfileEditScreen()))),
-          _ProfileTile(
-              icon: Icons.card_membership,
-              title: 'Subscription',
-              onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const SubscriptionsScreen()))),
           _ProfileTile(
               icon: Icons.account_balance_wallet,
               title: 'e-Gift Balance',

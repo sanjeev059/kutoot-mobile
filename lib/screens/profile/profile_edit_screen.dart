@@ -1,10 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/kutoot_api.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/image_utils.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -20,6 +23,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _saving = false;
+  bool _uploadingAvatar = false;
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -42,7 +47,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       if (user != null) {
         _nameController.text = user['name']?.toString() ?? '';
         _emailController.text = user['email']?.toString() ?? '';
-        _phoneController.text = user['phone']?.toString() ?? '';
+        _phoneController.text = user['mobile']?.toString() ??
+            user['phone']?.toString() ??
+            '';
       }
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
@@ -66,23 +73,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             const Duration(seconds: 5),
             onTimeout: () => throw Exception('timeout'),
           );
-      final raw = res.data;
-      Map<String, dynamic>? data;
-      if (raw is Map) {
-        data = raw['data'] is Map
-            ? Map<String, dynamic>.from(raw['data'] as Map)
-            : Map<String, dynamic>.from(raw);
-      }
+      final data = KutootApi.unwrapSuccessData(res.data);
       if (data != null && mounted) {
         setState(() {
-          if ((data!['name'] ?? '').toString().isNotEmpty) {
+          if ((data['name'] ?? '').toString().isNotEmpty) {
             _nameController.text = data['name'].toString();
           }
           if ((data['email'] ?? '').toString().isNotEmpty) {
             _emailController.text = data['email'].toString();
           }
-          if ((data['phone'] ?? '').toString().isNotEmpty) {
-            _phoneController.text = data['phone'].toString();
+          final mob = data['mobile'] ?? data['phone'];
+          if ((mob ?? '').toString().isNotEmpty) {
+            _phoneController.text = mob.toString();
           }
         });
       }
@@ -99,7 +101,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     final payload = <String, dynamic>{'name': name};
     if (email.isNotEmpty) payload['email'] = email;
-    if (phone.isNotEmpty) payload['phone'] = phone;
+    if (phone.isNotEmpty) {
+      payload['phone'] = phone;
+      payload['mobile'] = phone;
+    }
 
     try {
       final res = await _api
@@ -123,7 +128,23 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         await prefs.setString('profile_phone', phone);
       }
 
+      final bodyUser = KutootApi.unwrapSuccessData(res.data);
       if (mounted) {
+        if (bodyUser != null) {
+          if (bodyUser['user'] is Map) {
+            context.read<AuthProvider>().mergeUserFields(
+                Map<String, dynamic>.from(bodyUser['user'] as Map));
+          } else {
+            context.read<AuthProvider>().mergeUserFields(bodyUser);
+          }
+        } else {
+          context.read<AuthProvider>().mergeUserFields({
+            'name': name,
+            if (email.isNotEmpty) 'email': email,
+            'mobile': phone,
+            'phone': phone,
+          });
+        }
         await context.read<AuthProvider>().checkAuth();
       }
 
@@ -138,15 +159,67 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       setState(() => _saving = false);
       var message = 'Could not update profile. Please try again.';
       if (e is DioException) {
-        final data = e.response?.data;
-        if (data is Map && data['message'] != null) {
-          message = data['message'].toString();
-        } else if (e.message != null && e.message!.isNotEmpty) {
-          message = e.message!;
+        if (e.response?.statusCode == 401) {
+          await context.read<AuthProvider>().logout();
+          message = 'Session expired. Please log in again.';
+        } else {
+          final data = e.response?.data;
+          if (data is Map && data['message'] != null) {
+            message = data['message'].toString();
+          } else if (e.message != null && e.message!.isNotEmpty) {
+            message = e.message!;
+          }
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  Future<void> _uploadAvatarFile(String path) async {
+    setState(() => _uploadingAvatar = true);
+    try {
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(path, filename: 'avatar.jpg'),
+      });
+      await _api.updateAvatar(formData);
+      if (mounted) {
+        await context.read<AuthProvider>().checkAuth();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      var message = 'Could not upload photo.';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          message = data['message'].toString();
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final x = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (x == null || !mounted) return;
+      await _uploadAvatarFile(x.path);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not pick image')),
       );
     }
   }
@@ -166,9 +239,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               title: const Text('Take Photo'),
               onTap: () {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon')),
-                );
+                _pickImage(ImageSource.camera);
               },
             ),
             ListTile(
@@ -176,9 +247,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon')),
-                );
+                _pickImage(ImageSource.gallery);
               },
             ),
           ],
@@ -189,6 +258,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    final avatarUrl = ImageUtils.resolve(user?['profile_picture_url']);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -211,11 +283,40 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               Center(
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: AppTheme.surfaceContainerHigh,
-                      child: const Icon(Icons.person,
-                          size: 48, color: AppTheme.primary),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        CircleAvatar(
+                          radius: 48,
+                          backgroundColor: AppTheme.surfaceContainerHigh,
+                          backgroundImage: avatarUrl.isNotEmpty
+                              ? CachedNetworkImageProvider(avatarUrl)
+                              : null,
+                          child: avatarUrl.isNotEmpty
+                              ? null
+                              : const Icon(Icons.person,
+                                  size: 48, color: AppTheme.primary),
+                        ),
+                        if (_uploadingAvatar)
+                          Positioned.fill(
+                            child: ClipOval(
+                              child: ColoredBox(
+                                color: Colors.black38,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white.withValues(
+                                          alpha: 0.95),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     Positioned(
                       bottom: 0,

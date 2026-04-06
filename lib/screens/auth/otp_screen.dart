@@ -179,7 +179,7 @@ class _OtpScreenState extends State<OtpScreen> {
               width: 180,
               height: 180,
               decoration: BoxDecoration(
-                color: AppTheme.secondary.withOpacity(0.08),
+                color: AppTheme.accentWarm.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
             ),
@@ -228,13 +228,13 @@ class _OtpScreenState extends State<OtpScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppTheme.secondary.withOpacity(0.08),
+                          color: AppTheme.accentWarm.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Dev OTP: $_debugOtp',
                           style: const TextStyle(
-                            color: AppTheme.secondary,
+                            color: AppTheme.accentWarm,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.5,

@@ -2,11 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/api_data_service.dart';
-import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 import '../payment/pay_bill_screen.dart';
-import '../plans/plans_screen.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? store;
@@ -18,7 +16,6 @@ class StoreProfileScreen extends StatefulWidget {
 }
 
 class _StoreProfileScreenState extends State<StoreProfileScreen> {
-  String? _currentPlan;
   String? _appliedCode;
   List<_StoreCoupon>? _apiCoupons;
   Timer? _refreshTimer;
@@ -26,7 +23,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPlan();
     _fetchCoupons();
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchCoupons());
@@ -36,12 +32,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadPlan() async {
-    final plan = await SubscriptionPlanService.getCurrentPlanName();
-    if (!mounted) return;
-    setState(() => _currentPlan = plan);
   }
 
   Future<void> _fetchCoupons() async {
@@ -113,7 +103,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     final coupons = _apiCoupons ?? _buildStoreCoupons();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -356,8 +346,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         builder: (_) => _AllCouponsScreen(
                           storeName: name,
                           coupons: coupons,
-                          currentPlan: _currentPlan,
-                          planRank: _planRank,
                           onApply: (coupon) {
                             _applyCoupon(coupon);
                           },
@@ -381,7 +369,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Coupon applicability is based on your selected plan.',
+                  'Tap a coupon to apply at checkout.',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               ),
@@ -395,7 +383,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 itemCount: coupons.length,
                 itemBuilder: (_, i) {
                   final coupon = coupons[i];
-                  final canApply = _canApplyCoupon(coupon.requiredPlan);
+                  final canApply = true;
                   final applied = _appliedCode == coupon.code;
                   return _CouponCard(
                     coupon: coupon,
@@ -425,43 +413,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             child: Icon(Icons.store_rounded, size: 80, color: Colors.white38)),
       );
 
-  int _planRank(String? plan) {
-    switch ((plan ?? '').toUpperCase()) {
-      case 'BASIC':
-        return 1;
-      case 'PRO':
-        return 2;
-      case 'VIP':
-        return 3;
-      case 'ELITE':
-        return 4;
-      default:
-        return 0;
-    }
-  }
-
-  bool _canApplyCoupon(String requiredPlan) {
-    return _planRank(_currentPlan) >= _planRank(requiredPlan);
-  }
-
   void _applyCoupon(_StoreCoupon coupon) {
-    if (!_canApplyCoupon(coupon.requiredPlan)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'This coupon requires ${coupon.requiredPlan} plan or above. Redirecting to plans...',
-          ),
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PlansScreen(
-              cityName: widget.store?['city']?.toString() ?? 'Bangalore'),
-        ),
-      );
-      return;
-    }
     setState(() => _appliedCode = coupon.code);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${coupon.code} applied successfully')),
@@ -521,15 +473,11 @@ List<_StoreCoupon> _buildStoreCoupons() {
 class _AllCouponsScreen extends StatefulWidget {
   final String storeName;
   final List<_StoreCoupon> coupons;
-  final String? currentPlan;
-  final int Function(String?) planRank;
   final void Function(_StoreCoupon) onApply;
 
   const _AllCouponsScreen({
     required this.storeName,
     required this.coupons,
-    required this.currentPlan,
-    required this.planRank,
     required this.onApply,
   });
 
@@ -540,9 +488,6 @@ class _AllCouponsScreen extends StatefulWidget {
 class _AllCouponsScreenState extends State<_AllCouponsScreen> {
   String _filter = 'All';
   String? _appliedCode;
-
-  bool _canApply(String requiredPlan) =>
-      widget.planRank(widget.currentPlan) >= widget.planRank(requiredPlan);
 
   List<_StoreCoupon> get _filtered {
     List<_StoreCoupon> base;
@@ -570,7 +515,7 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
   Widget build(BuildContext context) {
     final coupons = _filtered;
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -659,7 +604,7 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (_, i) {
                   final c = coupons[i];
-                  final canApply = _canApply(c.requiredPlan);
+                  final canApply = true;
                   final applied = _appliedCode == c.code;
                   return _CouponListCard(
                     coupon: c,
@@ -670,10 +615,9 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
                       widget.onApply(c);
                     },
                     onLocked: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PlansScreen(cityName: 'Bangalore'),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('This offer is available to use.'),
                         ),
                       );
                     },

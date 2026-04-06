@@ -8,9 +8,8 @@ import 'providers/onboarding_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'navigation/app_navigator.dart';
 import 'screens/splash_screen.dart';
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -24,7 +23,7 @@ void main() async {
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  NotificationService().setNavigatorKey(navigatorKey);
+  NotificationService().setNavigatorKey(appNavigatorKey);
   await NotificationService().initFCM();
 
   FlutterError.onError = (details) {
@@ -51,7 +50,7 @@ class KutootApp extends StatelessWidget {
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
           return MaterialApp(
-            navigatorKey: navigatorKey,
+            navigatorKey: appNavigatorKey,
             title: 'KUTOOT',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,

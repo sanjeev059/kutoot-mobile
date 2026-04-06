@@ -33,7 +33,7 @@ class LegalTermsScreen extends StatelessWidget {
                         Text(
                           'LEGAL FRAMEWORK',
                           style: TextStyle(
-                            color: AppTheme.secondary,
+                            color: AppTheme.accentWarm,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.7,
@@ -88,7 +88,7 @@ class LegalTermsScreen extends StatelessWidget {
                   SizedBox(height: 18),
                   _TermsCard(
                     icon: Icons.person_pin_circle_outlined,
-                    iconColor: AppTheme.secondary,
+                    iconColor: AppTheme.accentWarm,
                     title: 'User Responsibilities',
                     body:
                         'Provide accurate information and maintain confidentiality of your account.',

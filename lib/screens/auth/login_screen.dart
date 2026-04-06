@@ -228,8 +228,8 @@ class _LoginScreenState extends State<LoginScreen>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          AppTheme.secondary.withValues(alpha: 0.08),
-                          AppTheme.secondary.withValues(alpha: 0.02),
+                          AppTheme.accentWarm.withValues(alpha: 0.08),
+                          AppTheme.accentWarm.withValues(alpha: 0.02),
                         ],
                       ),
                     ),

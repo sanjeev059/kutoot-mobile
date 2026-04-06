@@ -4,7 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../api/kutoot_api.dart';
 import '../screens/campaigns/campaign_detail_screen.dart';
 import '../screens/campaigns/campaigns_screen.dart';
-import '../screens/plans/plans_screen.dart';
+import '../screens/home/kinetic_home_screens.dart';
 import '../screens/rewards/rewards_deals_screen.dart';
 import '../screens/stores/stores_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
@@ -141,15 +141,7 @@ class NotificationService extends ChangeNotifier {
         if (campaignId != null) {
           screen = CampaignDetailScreen(campaignId: campaignId);
         } else {
-          screen = CampaignsScreen(
-            cityName: _cityName,
-            upgradeLabel: 'UPGRADE',
-            onUpgradeTap: () => nav.push(
-              MaterialPageRoute(
-                builder: (_) => PlansScreen(cityName: _cityName),
-              ),
-            ),
-          );
+          screen = CampaignsScreen(cityName: _cityName);
         }
         break;
 
@@ -163,7 +155,7 @@ class NotificationService extends ChangeNotifier {
 
       case 'plan':
       case 'plan_update':
-        screen = PlansScreen(cityName: _cityName);
+        screen = LoggedInHomeScreen(cityName: _cityName);
         break;
 
       default:

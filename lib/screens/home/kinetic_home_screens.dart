@@ -4,16 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/api_data_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/subscription_plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/campaign_preview_sheet.dart';
 import '../../widgets/premium_widgets.dart';
 import '../auth/login_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../plans/plans_screen.dart';
-import '../profile/profile_hub_screen.dart';
-import '../rewards/rewards_deals_screen.dart';
 import '../../widgets/kutoot_bottom_nav.dart';
 import '../qr/qr_scan_screen.dart';
 import '../stores/store_profile_screen.dart';
@@ -189,11 +185,11 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
           children: [
             _HomeTopBar(
               left: InkWell(
-                onTap: _goPro,
+                onTap: _openLogin,
                 borderRadius: BorderRadius.circular(999),
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
                     color: context.kutootCardSurface,
                     borderRadius: BorderRadius.circular(999),
@@ -207,19 +203,19 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.account_circle_outlined,
-                          size: 16, color: context.kutootOnSurface),
-                      const SizedBox(width: 4),
+                          size: 12, color: context.kutootOnSurface),
+                      const SizedBox(width: 2),
                       Text('GUEST • LOGIN',
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              fontSize: 10,
+                              fontSize: 8.5,
+                              height: 1.1,
+                              letterSpacing: 0.15,
                               color: context.kutootOnSurface)),
                     ],
                   ),
                 ),
               ),
-              rightLabel: 'GO PRO',
-              onRightTap: _goPro,
             ),
             Expanded(
               child: _loading
@@ -240,9 +236,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: widget.cityName,
-                            upgradeLabel: 'GO PRO',
                             initialTabIndex: 0,
-                            onUpgradeTap: _goPro,
                           ),
                         ),
                       ),
@@ -251,9 +245,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: widget.cityName,
-                            upgradeLabel: 'GO PRO',
                             initialTabIndex: 1,
-                            onUpgradeTap: _goPro,
                           ),
                         ),
                       ),
@@ -274,12 +266,11 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
         activeIndex: 0,
         cityName: widget.cityName,
         isLoggedIn: false,
-        planLabel: 'FREE',
       ),
     );
   }
 
-  void _goPro() {
+  void _openLogin() {
     Navigator.push(
         context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
@@ -299,7 +290,6 @@ class LoggedInHomeScreen extends StatefulWidget {
 class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   int _activeCategory = 0;
   String _searchQuery = '';
-  String _upgradeLabel = 'UPGRADE';
   List<Map<String, dynamic>> _stores = [];
   List<Map<String, dynamic>> _categories = [];
   List<String> _bannerUrls = [];
@@ -312,7 +302,6 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPlanLabel();
     _fetchData();
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
@@ -329,15 +318,6 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
 
   void _onNotifUpdate() {
     if (mounted) setState(() => _unreadCount = _notifService.unreadCount);
-  }
-
-  Future<void> _loadPlanLabel() async {
-    final plan = await SubscriptionPlanService.getCurrentPlanName();
-    if (!mounted) return;
-    final p = (plan ?? '').trim().toUpperCase();
-    final label =
-        (p == 'FREE' || p == 'BASIC') ? 'UPGRADE' : (plan ?? 'UPGRADE');
-    setState(() => _upgradeLabel = label);
   }
 
   Future<void> _fetchData() async {
@@ -374,6 +354,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: context.kutootPageBg,
       body: SafeArea(
@@ -392,21 +373,31 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondary.withOpacity(0.10),
+                    color: dark
+                        ? const Color(0xFF2C2C2E)
+                        : AppTheme.secondary.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(999),
-                    border:
-                        Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+                    border: Border.all(
+                      color: dark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : AppTheme.secondary.withOpacity(0.20),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.location_on,
-                          size: 15, color: AppTheme.secondary),
+                      Icon(Icons.location_on,
+                          size: 15,
+                          color: dark
+                              ? const Color(0xFFFF7A2E)
+                              : AppTheme.secondary),
                       const SizedBox(width: 2),
                       Text(
                         '${widget.cityName} ▾',
-                        style: const TextStyle(
-                          color: AppTheme.secondary,
+                        style: TextStyle(
+                          color: dark
+                              ? const Color(0xFFFFE0D5)
+                              : AppTheme.secondary,
                           fontWeight: FontWeight.w800,
                           fontSize: 11,
                         ),
@@ -415,21 +406,12 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                   ),
                 ),
               ),
-              rightLabel: _upgradeLabel,
               notificationCount: _unreadCount,
               onNotificationTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                     builder: (_) => const NotificationsScreen()),
               ),
-              onRightTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => PlansScreen(cityName: widget.cityName)),
-                );
-                _loadPlanLabel();
-              },
             ),
             Expanded(
               child: _loading
@@ -450,15 +432,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: widget.cityName,
-                            upgradeLabel: _upgradeLabel,
                             initialTabIndex: 0,
-                            onUpgradeTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PlansScreen(cityName: widget.cityName),
-                              ),
-                            ),
                           ),
                         ),
                       ),
@@ -467,15 +441,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                         MaterialPageRoute(
                           builder: (_) => CampaignsScreen(
                             cityName: widget.cityName,
-                            upgradeLabel: _upgradeLabel,
                             initialTabIndex: 1,
-                            onUpgradeTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PlansScreen(cityName: widget.cityName),
-                              ),
-                            ),
                           ),
                         ),
                       ),
@@ -496,7 +462,6 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
         activeIndex: 0,
         cityName: widget.cityName,
         isLoggedIn: true,
-        planLabel: _upgradeLabel,
       ),
     );
   }
@@ -612,6 +577,7 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
   Widget build(BuildContext context) {
     final filtered = List<Map<String, dynamic>>.from(_filteredStores);
     _applySort(filtered);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: context.kutootPageBg,
       body: SafeArea(
@@ -632,21 +598,31 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.secondary.withOpacity(0.10),
+                      color: dark
+                          ? const Color(0xFF2C2C2E)
+                          : AppTheme.secondary.withOpacity(0.10),
                       borderRadius: BorderRadius.circular(999),
-                      border:
-                          Border.all(color: AppTheme.secondary.withOpacity(0.20)),
+                      border: Border.all(
+                        color: dark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : AppTheme.secondary.withOpacity(0.20),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_on,
-                            size: 15, color: AppTheme.secondary),
+                        Icon(Icons.location_on,
+                            size: 15,
+                            color: dark
+                                ? const Color(0xFFFF7A2E)
+                                : AppTheme.secondary),
                         const SizedBox(width: 2),
                         Text(
                           '${widget.cityName} ▾',
-                          style: const TextStyle(
-                            color: AppTheme.secondary,
+                          style: TextStyle(
+                            color: dark
+                                ? const Color(0xFFFFE0D5)
+                                : AppTheme.secondary,
                             fontWeight: FontWeight.w800,
                             fontSize: 11,
                           ),
@@ -655,12 +631,6 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                     ),
                   ),
                 ],
-              ),
-              rightLabel: 'UPGRADE',
-              onRightTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => PlansScreen(cityName: widget.cityName)),
               ),
             ),
             Expanded(
@@ -672,7 +642,7 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                         children: [
                           _SearchBar(
-                            hint: 'Search stores, brands, or items...',
+                            hint: 'Search stores, areas, or branches...',
                             onChanged: (q) => setState(() => _searchQuery = q),
                           ),
                           const SizedBox(height: 12),
@@ -683,6 +653,8 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                                 final selected = _activeCategory == i;
                                 final catName =
                                     _categories[i]['name']?.toString() ?? '';
+                                final dark = Theme.of(context).brightness ==
+                                    Brightness.dark;
                                 return Padding(
                                   padding: const EdgeInsets.only(right: 8),
                                   child: GestureDetector(
@@ -693,7 +665,9 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                                       decoration: BoxDecoration(
                                         color: selected
                                             ? AppTheme.secondary
-                                            : const Color(0xFFE5E5E5),
+                                            : (dark
+                                                ? const Color(0xFF3A3A3C)
+                                                : const Color(0xFFE5E5E5)),
                                         borderRadius:
                                             BorderRadius.circular(999),
                                       ),
@@ -702,7 +676,9 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                                         style: TextStyle(
                                           color: selected
                                               ? Colors.white
-                                              : AppTheme.textPrimary,
+                                              : (dark
+                                                  ? context.kutootOnSurface
+                                                  : AppTheme.textPrimary),
                                           fontWeight: selected
                                               ? FontWeight.w800
                                               : FontWeight.w700,
@@ -732,13 +708,13 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                           const SizedBox(height: 18),
                           Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'Nearby curated stores',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
-                                    color: AppTheme.textPrimary,
+                                    color: context.kutootOnSurface,
                                     letterSpacing: -0.3,
                                   ),
                                 ),
@@ -781,7 +757,6 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
         activeIndex: 0,
         cityName: widget.cityName,
         isLoggedIn: true,
-        planLabel: 'UPGRADE',
       ),
     );
   }
@@ -823,15 +798,99 @@ class _HomeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return RefreshIndicator(
       onRefresh: onRefresh ?? () async {},
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 96),
         children: [
           _SearchBar(
-              hint: 'Search for brands or products...',
+              hint: 'Search stores, areas, or branches...',
               onChanged: onSearchChanged),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Text(
+            'EXPLORE CATEGORIES',
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.5,
+              color: context.kutootMutedText,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 88,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              itemBuilder: (_, i) {
+                final selected = activeCategory == i;
+                final catName = categories[i]['name']?.toString() ?? 'ALL';
+                return Padding(
+                  padding: EdgeInsets.only(
+                      right: i == categories.length - 1 ? 0 : 12),
+                  child: _CategoryBubble(
+                    label: catName,
+                    selected: selected,
+                    onTap: () => onCategoryTap(i),
+                    color: i == 1
+                        ? AppTheme.primary
+                        : i == 2
+                            ? AppTheme.secondary
+                            : i == 3
+                                ? AppTheme.tertiaryContainer
+                                : const Color(0xFFF2DCE3),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Stores Nearby',
+                  style: TextStyle(
+                    color: context.kutootOnSurface,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onSeeAll,
+                child: const Text(
+                  'SEE ALL  ▶',
+                  style: TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 258,
+            child: stores.isEmpty
+                ? Center(
+                    child: Text('No stores found',
+                        style: TextStyle(color: context.kutootMutedText)))
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: stores.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: EdgeInsets.only(
+                          right: i == stores.length - 1 ? 0 : 12),
+                      child: _StoreCardCompact(store: stores[i]),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 18),
           _CampaignCarousel(
             campaigns: campaigns,
             bannerUrls: bannerUrls,
@@ -884,44 +943,6 @@ class _HomeBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Text(
-            'EXPLORE CATEGORIES',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 1.5,
-              color: context.kutootMutedText,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 78,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              itemBuilder: (_, i) {
-                final selected = activeCategory == i;
-                final catName = categories[i]['name']?.toString() ?? 'ALL';
-                return Padding(
-                  padding: EdgeInsets.only(
-                      right: i == categories.length - 1 ? 0 : 12),
-                  child: _CategoryBubble(
-                    label: catName,
-                    selected: selected,
-                    onTap: () => onCategoryTap(i),
-                    color: i == 1
-                        ? AppTheme.primary
-                        : i == 2
-                            ? AppTheme.secondary
-                            : i == 3
-                                ? AppTheme.tertiaryContainer
-                                : const Color(0xFFF2DCE3),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -944,128 +965,194 @@ class _HomeBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFF1E8), Color(0xFFFFF8F5)],
-              ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AllStoresScreen(cityName: cityName),
                   ),
-                  child: const Icon(Icons.near_me,
-                      color: AppTheme.secondary, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('NEAR YOU RIGHT NOW',
-                          style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                              color: AppTheme.secondary)),
-                      const SizedBox(height: 2),
-                      Text(
-                          '3 stores with active drops within 1 km',
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textSecondary)),
-                    ],
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: dark
+                      ? null
+                      : const LinearGradient(
+                          colors: [Color(0xFFFFF1E8), Color(0xFFFFF8F5)],
+                        ),
+                  color: dark ? const Color(0xFF1C1C1E) : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: dark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFE1BEC0),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppTheme.secondary),
-              ],
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color:
+                            AppTheme.secondary.withOpacity(dark ? 0.2 : 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.near_me,
+                          color: dark
+                              ? AppTheme.secondaryContainer
+                              : AppTheme.secondary,
+                          size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('NEAR YOU RIGHT NOW',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: dark
+                                      ? AppTheme.secondaryContainer
+                                      : AppTheme.secondary)),
+                          const SizedBox(height: 2),
+                          Text(
+                            stores.isEmpty
+                                ? 'Browse stores in $cityName'
+                                : '${stores.length} stores • tap to open list',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: dark
+                                    ? context.kutootMutedText
+                                    : AppTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: dark
+                            ? context.kutootMutedText
+                            : AppTheme.secondary),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFE0B2), Color(0xFFFFF8E1)],
-              ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFFCC80)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6D00).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.access_time_filled,
-                      color: Color(0xFFFF6D00), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'HAPPY HOURS',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                          color: Color(0xFFE65100),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '4 PM – 7 PM exclusive discounts active!',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6D00),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CampaignsScreen(
+                      cityName: cityName,
+                      initialTabIndex: 1,
                     ),
                   ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: dark
+                      ? null
+                      : const LinearGradient(
+                          colors: [Color(0xFFFFE0B2), Color(0xFFFFF8E1)],
+                        ),
+                  color: dark ? const Color(0xFF2C2419) : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: dark
+                        ? const Color(0xFFFF8F00).withValues(alpha: 0.35)
+                        : const Color(0xFFFFCC80),
+                  ),
                 ),
-              ],
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF6D00)
+                            .withOpacity(dark ? 0.25 : 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.access_time_filled,
+                          color: Color(0xFFFF6D00), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HAPPY HOURS',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                              color: dark
+                                  ? const Color(0xFFFFB74D)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '4 PM – 7 PM • tap for announced campaigns',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: dark
+                                  ? const Color(0xFFE0E0E0)
+                                  : const Color(0xFF5D4037),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF6D00),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF8A002B).withOpacity(0.06),
+              color: dark
+                  ? const Color(0xFF2A1518)
+                  : AppTheme.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: const Color(0xFF8A002B).withOpacity(0.12)),
+                  color: dark
+                      ? AppTheme.primary.withValues(alpha: 0.45)
+                      : AppTheme.primary.withOpacity(0.12)),
             ),
             child: Row(
               children: [
@@ -1088,7 +1175,9 @@ class _HomeBody extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.textSecondary)),
+                              color: dark
+                                  ? context.kutootMutedText
+                                  : AppTheme.textSecondary)),
                     ],
                   ),
                 ),
@@ -1096,57 +1185,16 @@ class _HomeBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Stores Nearby',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: onSeeAll,
-                child: const Text(
-                  'SEE ALL  ▶',
-                  style: TextStyle(
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 258,
-            child: stores.isEmpty
-                ? const Center(
-                    child: Text('No stores found',
-                        style: TextStyle(color: Color(0xFF9A9A9A))))
-                : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: stores.length,
-                    itemBuilder: (_, i) => Padding(
-                      padding: EdgeInsets.only(
-                          right: i == stores.length - 1 ? 0 : 12),
-                      child: _StoreCardCompact(store: stores[i]),
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.kutootCardSurface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE1BEC0)),
+              border: Border.all(
+                color: dark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : const Color(0xFFE1BEC0),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1155,7 +1203,7 @@ class _HomeBody extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.12),
+                    color: AppTheme.primary.withOpacity(dark ? 0.22 : 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.savings_outlined,
@@ -1166,12 +1214,12 @@ class _HomeBody extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Your Savings So Far',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
+                          color: context.kutootOnSurface,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -1191,7 +1239,9 @@ class _HomeBody extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary,
+                          color: dark
+                              ? context.kutootMutedText
+                              : AppTheme.textSecondary,
                           height: 1.35,
                         ),
                       ),
@@ -1452,10 +1502,25 @@ class _CampaignCarouselState extends State<_CampaignCarousel> {
                         Positioned(
                           top: 12,
                           left: 12,
-                          child: Image.asset(
-                            AppTheme.logoAsset,
-                            height: 28,
-                            fit: BoxFit.contain,
+                          child: Builder(
+                            builder: (ctx) {
+                              final d = Theme.of(ctx).brightness ==
+                                  Brightness.dark;
+                              return Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: d
+                                      ? Colors.black.withValues(alpha: 0.45)
+                                      : Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Image.asset(
+                                  AppTheme.logoAsset,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                ),
+                              );
+                            },
                           ),
                         ),
                         Positioned(
@@ -1542,7 +1607,7 @@ class _TopOfferCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 200,
+      width: 216,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: LinearGradient(
@@ -1644,41 +1709,63 @@ class _TopOfferCard extends StatelessWidget {
 
 class _HomeTopBar extends StatelessWidget {
   final Widget left;
-  final String rightLabel;
-  final VoidCallback onRightTap;
+  final String? rightLabel;
+  final VoidCallback? onRightTap;
   final int notificationCount;
   final VoidCallback? onNotificationTap;
 
   const _HomeTopBar(
       {required this.left,
-      required this.rightLabel,
-      required this.onRightTap,
+      this.rightLabel,
+      this.onRightTap,
       this.notificationCount = 0,
       this.onNotificationTap});
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: Colors.white.withOpacity(0.92),
+      decoration: BoxDecoration(
+        color: dark
+            ? context.kutootTopBarBg
+            : Colors.white.withValues(alpha: 0.96),
+        border: Border(
+          bottom: BorderSide(color: context.kutootHairlineBorder),
+        ),
+      ),
       child: Row(
         children: [
           left,
           Expanded(
             child: Center(
               child: Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
+                padding: dark ? const EdgeInsets.all(5) : EdgeInsets.zero,
+                decoration: dark
+                    ? BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      )
+                    : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: dark
+                            ? AppTheme.primary.withValues(alpha: 0.35)
+                            : const Color(0xFFFFD700).withValues(alpha: 0.3),
+                        blurRadius: dark ? 14 : 20,
+                        spreadRadius: dark ? 0 : 2,
+                      ),
+                    ],
+                  ),
+                  child: Image.asset('assets/images/k_logo.png',
+                      height: dark ? 40 : 48, fit: BoxFit.contain),
                 ),
-                child: Image.asset('assets/images/k_logo.png',
-                    height: 48, fit: BoxFit.contain),
               ),
             ),
           ),
@@ -1722,47 +1809,42 @@ class _HomeTopBar extends StatelessWidget {
                 ),
               ),
             ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (rightLabel == 'GO PRO')
-                const Text('FREE MEMBER',
-                    style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textSecondary,
-                        letterSpacing: 0.8)),
-              if (rightLabel == 'GO PRO') const SizedBox(height: 2),
-              InkWell(
-                onTap: onRightTap,
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.26),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
+          if (rightLabel != null &&
+              rightLabel!.isNotEmpty &&
+              onRightTap != null)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: onRightTap,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primary.withOpacity(0.26),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      rightLabel!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w800,
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    rightLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      letterSpacing: 1.1,
-                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -1852,6 +1934,7 @@ class _FlowEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -1864,9 +1947,13 @@ class _FlowEntryCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.kutootCardSurface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE1BEC0)),
+            border: Border.all(
+              color: dark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : const Color(0xFFE1BEC0),
+            ),
           ),
           child: Row(
             children: [
@@ -1874,7 +1961,7 @@ class _FlowEntryCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.12),
+                  color: AppTheme.primary.withOpacity(dark ? 0.22 : 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: AppTheme.primary, size: 20),
@@ -1890,8 +1977,10 @@ class _FlowEntryCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.1)),
                   Text(subtitle,
-                      style: const TextStyle(
-                          color: AppTheme.textPrimary,
+                      style: TextStyle(
+                          color: dark
+                              ? context.kutootOnSurface
+                              : AppTheme.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700)),
                 ],
@@ -1918,42 +2007,59 @@ class _CategoryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final icon = _iconForCategoryName(label);
     final lower = label.trim().toLowerCase();
     final iconColor =
         lower == 'all' || lower == 'home' ? AppTheme.primary : Colors.white;
+    final labelColor = selected
+        ? AppTheme.primary
+        : (dark ? context.kutootMutedText : AppTheme.textPrimary);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       splashColor: AppTheme.primary.withOpacity(0.12),
       highlightColor: AppTheme.primary.withOpacity(0.06),
-      child: Column(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: selected ? color : color.withOpacity(0.80),
-              borderRadius: BorderRadius.circular(14),
-              border: selected
-                  ? Border.all(color: const Color(0xFFFFD700), width: 2)
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4))
-              ],
+      child: SizedBox(
+        width: 56,
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: selected ? color : color.withOpacity(0.80),
+                borderRadius: BorderRadius.circular(14),
+                border: selected
+                    ? Border.all(
+                        color:
+                            dark ? AppTheme.primaryContainer : const Color(0xFFFFD700),
+                        width: 2)
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(dark ? 0.35 : 0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ],
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(height: 8),
-          Text(label,
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  color: selected ? AppTheme.primary : AppTheme.textPrimary)),
-        ],
+                fontSize: 9,
+                height: 1.15,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                color: labelColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2118,6 +2224,7 @@ class _StoreCardLarge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final name = store['name']?.toString() ?? 'Store';
     final image = store['image']?.toString() ?? '';
     final tag = _storeDisplayTag(store);
@@ -2134,9 +2241,13 @@ class _StoreCardLarge extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.kutootCardSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withOpacity(0.05),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2203,16 +2314,20 @@ class _StoreCardLarge extends StatelessWidget {
               child: Text(name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w800)),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: context.kutootOnSurface)),
             ),
             if (distance.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text('📍 $distance AWAY',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 10,
-                        color: Color(0x99594042),
+                        color: dark
+                            ? context.kutootMutedText
+                            : const Color(0x99594042),
                         fontWeight: FontWeight.w700)),
               ),
             Padding(
@@ -2251,16 +2366,22 @@ class _StoreCardLarge extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Material(
-                    color: const Color(0xFFE5E5E5),
+                    color: dark
+                        ? const Color(0xFF3A3A3C)
+                        : const Color(0xFFE5E5E5),
                     borderRadius: BorderRadius.circular(18),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: () => _showDirectionsComingSoon(context),
                       borderRadius: BorderRadius.circular(18),
-                      child: const SizedBox(
+                      child: SizedBox(
                         width: 34,
                         height: 34,
-                        child: Icon(Icons.directions, size: 18),
+                        child: Icon(Icons.directions,
+                            size: 18,
+                            color: dark
+                                ? context.kutootOnSurface
+                                : AppTheme.textPrimary),
                       ),
                     ),
                   ),
@@ -2329,15 +2450,22 @@ class _SortChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary.withOpacity(0.1) : Colors.white,
+          color: selected
+              ? AppTheme.primary.withOpacity(dark ? 0.22 : 0.1)
+              : (dark ? const Color(0xFF3A3A3C) : Colors.white),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppTheme.primary : const Color(0xFFE1BEC0),
+            color: selected
+                ? AppTheme.primary
+                : (dark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : const Color(0xFFE1BEC0)),
           ),
         ),
         child: Row(
@@ -2353,7 +2481,9 @@ class _SortChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? AppTheme.primary : AppTheme.textSecondary,
+                color: selected
+                    ? AppTheme.primary
+                    : (dark ? context.kutootMutedText : AppTheme.textSecondary),
               ),
             ),
           ],
