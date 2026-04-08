@@ -107,100 +107,20 @@ class AppTheme {
       ),
     );
   }
-
-  /// Dark: keep OLED-friendly surfaces; brand primary matches spec red.
-  static ThemeData get darkTheme {
-    const canvas = Color(0xFF000000);
-    const surfaceCard = Color(0xFF1C1C1C);
-    const surfaceElevated = Color(0xFF242424);
-    const onSurfaceMuted = Color(0xFFAEAEB2);
-
-    final base = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.dark,
-      primary: primary,
-      secondary: ink,
-    );
-    final scheme = base.copyWith(
-      onPrimary: Colors.white,
-      primaryContainer: primaryDark,
-      onPrimaryContainer: Colors.white,
-      surface: surfaceCard,
-      onSurface: Colors.white,
-      onSurfaceVariant: onSurfaceMuted,
-      outline: const Color(0xFF3A3A3C),
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: canvas,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: canvas,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        surfaceTintColor: Colors.transparent,
-      ),
-      dividerTheme: const DividerThemeData(color: Color(0xFF2C2C2E)),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surfaceElevated,
-        hintStyle: const TextStyle(color: onSurfaceMuted),
-        labelStyle: const TextStyle(color: onSurfaceMuted),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-      cardTheme: CardThemeData(
-        color: surfaceCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        selectedItemColor: primary,
-        unselectedItemColor: onSurfaceMuted,
-        backgroundColor: surfaceCard,
-        type: BottomNavigationBarType.fixed,
-      ),
-    );
-  }
 }
 
 extension KutootThemeExt on BuildContext {
-  bool get isKutootDark => Theme.of(this).brightness == Brightness.dark;
+  Color get kutootPageBg => AppTheme.backgroundSpec;
 
-  Color get kutootPageBg =>
-      isKutootDark ? const Color(0xFF000000) : AppTheme.backgroundSpec;
+  Color get kutootCardSurface => AppTheme.backgroundSpec;
 
-  Color get kutootCardSurface =>
-      isKutootDark ? const Color(0xFF1C1C1C) : AppTheme.backgroundSpec;
+  Color get kutootSearchFill => const Color(0xFFF5F5F5);
 
-  Color get kutootSearchFill =>
-      isKutootDark ? const Color(0xFF3A3A3C) : const Color(0xFFF5F5F5);
+  Color get kutootMutedText => AppTheme.textSecondarySpec;
 
-  Color get kutootMutedText => isKutootDark
-      ? const Color(0xFFAEAEB2)
-      : AppTheme.textSecondarySpec;
+  Color get kutootOnSurface => AppTheme.textPrimarySpec;
 
-  Color get kutootOnSurface =>
-      isKutootDark ? Colors.white : AppTheme.textPrimarySpec;
+  Color get kutootTopBarBg => AppTheme.backgroundSpec;
 
-  Color get kutootTopBarBg =>
-      isKutootDark ? const Color(0xFF121212) : AppTheme.backgroundSpec;
-
-  Color get kutootHairlineBorder =>
-      isKutootDark ? const Color(0xFF2C2C2E) : const Color(0xFFE8E8E8);
+  Color get kutootHairlineBorder => const Color(0xFFE8E8E8);
 }

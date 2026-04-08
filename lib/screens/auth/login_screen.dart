@@ -42,6 +42,11 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat(reverse: true);
+    AuthProvider.loadLastLoginMobileDigits().then((digits) {
+      if (!mounted || digits == null || digits.isEmpty) return;
+      _mobileController.text = digits;
+      setState(() {});
+    });
   }
 
   @override
@@ -150,6 +155,12 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) return;
 
     if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Welcome to Kutoot — you\'re signed in.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LegalLoadingScreen()),
       );
@@ -183,12 +194,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _onPhoneChanged(String _) {
-    setState(() {});
-    if (_validPhone && !_otpSent && !_sending) {
-      _sendOtp();
-    }
-  }
+  void _onPhoneChanged(String _) => setState(() {});
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          _otpSent ? 'Verify OTP' : 'Welcome',
+                          _otpSent ? 'Verify OTP' : 'Log in',
                           style: const TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 36,
@@ -303,7 +309,8 @@ class _LoginScreenState extends State<LoginScreen>
                         Text(
                           _otpSent
                               ? 'Code sent to +91 $_digits'
-                              : 'Future of local commerce',
+                              : 'Enter your mobile number — we\'ll send a one-time code (OTP).',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 15,
@@ -386,32 +393,46 @@ class _LoginScreenState extends State<LoginScreen>
                                             fontSize: 13)),
                                   ),
                                 ),
-                              if (!_otpSent && _validPhone)
-                                GestureDetector(
-                                  onTap: _sendOtp,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: _sending
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: AppTheme.primary))
-                                        : const Text('Send OTP',
-                                            style: TextStyle(
-                                                color: AppTheme.primary,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 13)),
-                                  ),
-                                ),
-                              if (!_otpSent && !_validPhone)
-                                Icon(Icons.check_circle,
-                                    color: const Color(0x80AE1E3F)),
                               const SizedBox(width: 8),
                             ],
                           ),
                         ),
+
+                        if (!_otpSent) ...[
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: FilledButton(
+                              onPressed: _validPhone && !_sending ? _sendOtp : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    const Color(0xFFE1BEC0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: _sending
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Send OTP',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
 
                         // OTP Section
                         if (_otpSent) ...[

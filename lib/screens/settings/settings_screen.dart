@@ -72,14 +72,6 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Language',
                   subtitle: 'English',
                   onTap: () => _showComingSoon(context)),
-              _SettingsTile(
-                title: 'Dark Mode',
-                trailing: Switch(
-                  value: settings.darkMode,
-                  onChanged: (v) => settings.setDarkMode(v),
-                  activeColor: AppTheme.primary,
-                ),
-              ),
               const SizedBox(height: 24),
               const _SectionTitle('About'),
               _SettingsTile(
@@ -163,7 +155,6 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Container(
@@ -171,9 +162,9 @@ class _SettingsTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: isDark
-            ? []
-            : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8),
+        ],
       ),
       child: ListTile(
         title: Text(title,

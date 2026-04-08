@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../services/api_data_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
@@ -14,6 +13,7 @@ import '../../widgets/kutoot_bottom_nav.dart';
 import '../qr/qr_scan_screen.dart';
 import '../stores/store_profile_screen.dart';
 import '../payment/pay_bill_screen.dart';
+import '../../utils/maps_launch.dart';
 
 void _openPayBill(BuildContext context, Map<String, dynamic> store) {
   Navigator.push(
@@ -24,9 +24,66 @@ void _openPayBill(BuildContext context, Map<String, dynamic> store) {
   );
 }
 
-void _showDirectionsComingSoon(BuildContext context) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Directions coming soon')),
+Future<void> _openStoreDirections(
+    BuildContext context, Map<String, dynamic> store) async {
+  final ok = await openStoreInMaps(store);
+  if (!context.mounted) return;
+  if (!ok) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Could not open Maps. Install Google Maps or try again.'),
+      ),
+    );
+  }
+}
+
+void _showHappyHoursSheet(BuildContext context, String cityName) {
+  showModalBottomSheet<void>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => Padding(
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Happy hours & campaigns',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'These are time-limited reward campaigns. After you join, you earn stamps by paying at partner stores in the Kutoot app and showing your QR — there is no separate “task app” to install.',
+            style: TextStyle(
+              height: 1.45,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => CampaignsScreen(
+                      cityName: cityName,
+                      initialTabIndex: 1,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('View announced campaigns'),
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
@@ -189,7 +246,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                 borderRadius: BorderRadius.circular(999),
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                   decoration: BoxDecoration(
                     color: context.kutootCardSurface,
                     borderRadius: BorderRadius.circular(999),
@@ -203,14 +260,14 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.account_circle_outlined,
-                          size: 12, color: context.kutootOnSurface),
+                          size: 11, color: context.kutootOnSurface),
                       const SizedBox(width: 2),
-                      Text('GUEST • LOGIN',
+                      Text('LOGIN',
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              fontSize: 8.5,
-                              height: 1.1,
-                              letterSpacing: 0.15,
+                              fontSize: 7.5,
+                              height: 1.05,
+                              letterSpacing: 0.2,
                               color: context.kutootOnSurface)),
                     ],
                   ),
@@ -1050,16 +1107,7 @@ class _HomeBody extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => CampaignsScreen(
-                      cityName: cityName,
-                      initialTabIndex: 1,
-                    ),
-                  ),
-                );
-              },
+              onTap: () => _showHappyHoursSheet(context, cityName),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -1107,7 +1155,7 @@ class _HomeBody extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '4 PM – 7 PM • tap for announced campaigns',
+                            'Tap to learn how it works • view campaigns',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -1171,7 +1219,7 @@ class _HomeBody extends StatelessWidget {
                               color: Color(0xFFE53935))),
                       const SizedBox(height: 2),
                       Text(
-                          '12 people unlocked drops today  •  5 left',
+                          '12 people unlocked rewards today  •  5 left',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -2193,7 +2241,7 @@ class _StoreCardCompact extends StatelessWidget {
                           shape: const CircleBorder(),
                           clipBehavior: Clip.antiAlias,
                           child: InkWell(
-                            onTap: () => _showDirectionsComingSoon(context),
+                            onTap: () => _openStoreDirections(context, store),
                             customBorder: const CircleBorder(),
                             child: const Padding(
                               padding: EdgeInsets.all(6),
@@ -2372,7 +2420,7 @@ class _StoreCardLarge extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: () => _showDirectionsComingSoon(context),
+                      onTap: () => _openStoreDirections(context, store),
                       borderRadius: BorderRadius.circular(18),
                       child: SizedBox(
                         width: 34,

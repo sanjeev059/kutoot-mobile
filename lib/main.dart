@@ -47,18 +47,13 @@ class KutootApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
-      child: Consumer<SettingsProvider>(
-        builder: (context, settings, _) {
-          return MaterialApp(
-            navigatorKey: appNavigatorKey,
-            title: 'KUTOOT',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const SplashScreen(),
-          );
-        },
+      child: MaterialApp(
+        navigatorKey: appNavigatorKey,
+        title: 'KUTOOT',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        themeMode: ThemeMode.light,
+        home: const SplashScreen(),
       ),
     );
   }

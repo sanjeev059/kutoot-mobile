@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../api/kutoot_api.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../services/campaign_entry_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
@@ -12,6 +11,7 @@ import '../auth/delete_account_screen.dart';
 import '../auth/logout_confirm_screen.dart';
 import '../support/contact_support_screen.dart';
 import '../profile/profile_edit_screen.dart';
+import '../stamps/stamps_screen.dart';
 
 class ProfileHubScreen extends StatefulWidget {
   final String cityName;
@@ -30,10 +30,14 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
   List<Map<String, dynamic>> _campaignEntries = [];
   List<Map<String, dynamic>> _transactions = [];
   bool _pushNotifications = true;
+  String? _lastPhoneDigits;
 
   @override
   void initState() {
     super.initState();
+    AuthProvider.loadLastLoginMobileDigits().then((d) {
+      if (mounted) setState(() => _lastPhoneDigits = d);
+    });
     _loadCampaignEntries();
     _loadTransactions();
   }
@@ -101,165 +105,165 @@ class _ProfileHubScreenState extends State<ProfileHubScreen> {
           Consumer<AuthProvider>(
             builder: (context, auth, _) {
               final u = auth.user;
-              final name = (u?['name']?.toString().trim().isNotEmpty ?? false)
-                  ? u!['name'].toString()
-                  : 'Member';
-              final rawPhone = u?['mobile']?.toString().trim() ??
+              final rawName = u?['name']?.toString().trim() ?? '';
+              final name = rawName.isNotEmpty ? rawName : 'Member';
+              var rawPhone = u?['mobile']?.toString().trim() ??
                   u?['phone']?.toString().trim() ??
                   '';
-              final phone = rawPhone.isEmpty
-                  ? 'Add your number in Edit profile'
-                  : (rawPhone.startsWith('+') ? rawPhone : '+91 $rawPhone');
+              if (rawPhone.isEmpty &&
+                  _lastPhoneDigits != null &&
+                  _lastPhoneDigits!.length == 10) {
+                rawPhone = _lastPhoneDigits!;
+              }
+              var digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+              if (digits.startsWith('91') && digits.length == 12) {
+                digits = digits.substring(2);
+              }
+              final phone = digits.length == 10
+                  ? '+91 $digits'
+                  : (rawPhone.isEmpty
+                      ? 'Add your number in Edit profile'
+                      : (rawPhone.startsWith('+')
+                          ? rawPhone
+                          : '+91 $rawPhone'));
               final avatarUrl = ImageUtils.resolve(u?['profile_picture_url']);
-              return Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE1BEC0)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF5E5DB),
-                        shape: BoxShape.circle,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: avatarUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: avatarUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => const Icon(Icons.person,
-                                  color: AppTheme.primary, size: 42),
-                              errorWidget: (_, __, ___) => const Icon(
-                                  Icons.person,
-                                  color: AppTheme.primary,
-                                  size: 42),
-                            )
-                          : const Icon(Icons.person,
-                              color: AppTheme.primary, size: 42),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ProfileEditScreen()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFE1BEC0)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            phone,
-                            style: const TextStyle(
-                                color: AppTheme.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ProfileEditScreen()),
-                            );
-                          },
-                          icon: const Icon(Icons.edit_outlined,
-                              color: AppTheme.textPrimary),
-                          tooltip: 'Edit profile',
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF5E5DB),
+                            shape: BoxShape.circle,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: avatarUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: avatarUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => const Icon(
+                                      Icons.person,
+                                      color: AppTheme.primary,
+                                      size: 42),
+                                  errorWidget: (_, __, ___) => const Icon(
+                                      Icons.person,
+                                      color: AppTheme.primary,
+                                      size: 42),
+                                )
+                              : const Icon(Icons.person,
+                                  color: AppTheme.primary, size: 42),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                phone,
+                                style: const TextStyle(
+                                    color: AppTheme.textSecondary),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap to edit profile',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primary.withValues(alpha: 0.85),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppTheme.textSecondary),
                       ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Consumer<SettingsProvider>(
-            builder: (context, settings, _) {
-              final isDark = settings.darkMode;
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2A2A2E) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : const Color(0xFFF5F0EC),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        isDark
-                            ? Icons.dark_mode_rounded
-                            : Icons.light_mode_rounded,
-                        color: isDark ? Colors.amber : AppTheme.primary,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Dark Mode',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: isDark ? Colors.white : AppTheme.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            isDark ? 'On' : 'Off',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? Colors.white54
-                                  : AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch.adaptive(
-                      value: isDark,
-                      onChanged: (v) => settings.setDarkMode(v),
-                      activeColor: AppTheme.primary,
-                    ),
-                  ],
-                ),
               );
             },
           ),
+          if (context.watch<AuthProvider>().user != null) ...[
+            Builder(
+              builder: (context) {
+                final u = context.watch<AuthProvider>().user;
+                final rawName = u?['name']?.toString().trim() ?? '';
+                final incomplete = rawName.isEmpty ||
+                    rawName.startsWith('User ') ||
+                    (u?['mobile']?.toString().trim().isEmpty ?? true);
+                if (!incomplete) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ProfileEditScreen()),
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF7A2E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_outline_rounded, size: 22),
+                      label: const Text(
+                        'Complete your profile',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
           const SizedBox(height: 12),
+          _ActionTile(
+            icon: Icons.confirmation_number_rounded,
+            title: 'Stamp collection',
+            subtitle: 'Your stamp tickets, search & QR scan',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => StampsScreen(cityName: widget.cityName),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           _ActionTile(
             icon: Icons.help_outline_rounded,
             title: 'Support & Help',

@@ -10,6 +10,7 @@ import '../qr/qr_scan_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../campaigns/campaign_detail_screen.dart';
 import '../stores/store_profile_screen.dart';
+import '../stamps/stamps_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -35,6 +36,7 @@ class _ExploreScreenState extends State<ExploreScreen>
   bool _hasLoadedOnce = false;
   int _selectedCategoryIndex = 0;
   bool _loadingMerchants = false;
+  final TextEditingController _searchCtrl = TextEditingController();
 
   static const _fallbackCategories = [
     ('Food', Icons.restaurant_rounded),
@@ -54,7 +56,37 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(() => setState(() {}));
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<dynamic> get _merchantsForDisplay {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _merchants;
+    return _merchants.where((m) {
+      final map = m is Map ? m : {};
+      final merchant = map['merchant'] is Map ? map['merchant'] as Map : {};
+      final hay =
+          '${map['branch_name'] ?? ''} ${merchant['name'] ?? ''}'.toLowerCase();
+      return hay.contains(q);
+    }).toList();
+  }
+
+  List<dynamic> get _campaignSearchHits {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return _campaigns.where((c) {
+      final map = c is Map ? c : {};
+      final name =
+          '${map['reward_name'] ?? map['name'] ?? ''}'.toLowerCase();
+      return name.contains(q);
+    }).take(6).toList();
   }
 
   static IconData _categoryIcon(String name) {
@@ -104,6 +136,15 @@ class _ExploreScreenState extends State<ExploreScreen>
               ? (storesRes.data as Map)['data'] as List
               : [];
         }
+      } else if (_categories.isEmpty) {
+        final storesRes =
+            await _api.getStores(params: {'per_page': 15});
+        if (storesRes.data is Map &&
+            (storesRes.data as Map)['data'] != null) {
+          merchants = (storesRes.data as Map)['data'] is List
+              ? (storesRes.data as Map)['data'] as List
+              : [];
+        }
       }
     } catch (_) {}
     if (!mounted) return;
@@ -125,7 +166,7 @@ class _ExploreScreenState extends State<ExploreScreen>
             label: Text(c.$1),
             selected: _selectedCategoryIndex == i,
             onSelected: (sel) {
-              if (sel) setState(() => _selectedCategoryIndex = i);
+              if (sel) _fetchMerchantsForCategoryIndex(i);
             },
             selectedColor: AppTheme.primary.withOpacity(0.15),
             backgroundColor: AppTheme.background,
@@ -210,7 +251,8 @@ class _ExploreScreenState extends State<ExploreScreen>
             .toList(),
       );
     }
-    if (_merchants.isEmpty) {
+    final list = _merchantsForDisplay;
+    if (list.isEmpty) {
       return Center(
         child: Text(
           'No stores in this category yet',
@@ -219,9 +261,9 @@ class _ExploreScreenState extends State<ExploreScreen>
       );
     }
     return ListView.builder(
-      itemCount: _merchants.length,
+      itemCount: list.length,
       itemBuilder: (context, i) {
-        final m = _merchants[i];
+        final m = list[i];
         final map = m is Map ? m : {};
         final name = map['branch_name'] ??
             map['merchant']?['name'] ??
@@ -315,9 +357,11 @@ class _ExploreScreenState extends State<ExploreScreen>
                   : int.tryParse(primary['id'].toString()) ?? 0);
               if (campRes.data is Map && (campRes.data as Map)['data'] is Map) {
                 final camp = (campRes.data as Map)['data'] as Map;
-                stampTotal = camp['stamp_target'] ?? camp['stamp_slots'] ?? 10;
-                if (stampTotal is! int)
-                  stampTotal = int.tryParse(stampTotal.toString()) ?? 10;
+                final stDyn =
+                    camp['stamp_target'] ?? camp['stamp_slots'] ?? 10;
+                stampTotal = stDyn is int
+                    ? stDyn
+                    : (int.tryParse(stDyn.toString()) ?? 10);
               }
             } catch (_) {}
           }
@@ -358,8 +402,9 @@ class _ExploreScreenState extends State<ExploreScreen>
                 child: Column(
                   children: [
                     TextField(
+                      controller: _searchCtrl,
                       decoration: InputDecoration(
-                        hintText: 'Search merchants, schemes, or deals',
+                        hintText: 'Search stores, deals, or campaigns',
                         prefixIcon: Icon(Icons.search_rounded,
                             color: AppTheme.textSecondary),
                         filled: true,
@@ -372,6 +417,70 @@ class _ExploreScreenState extends State<ExploreScreen>
                             horizontal: 16, vertical: 14),
                       ),
                     ),
+                    if (_searchCtrl.text.trim().length >= 2) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Matching campaigns',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 40,
+                        child: _campaignSearchHits.isEmpty
+                            ? Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'No campaign name matches',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _campaignSearchHits.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, i) {
+                                  final c = _campaignSearchHits[i];
+                                  final map = c is Map ? c : {};
+                                  final id = map['id'] is int
+                                      ? map['id'] as int
+                                      : int.tryParse(
+                                          '${map['id']}',
+                                        );
+                                  final label =
+                                      map['reward_name']?.toString() ??
+                                          map['name']?.toString() ??
+                                          'Campaign';
+                                  return ActionChip(
+                                    label: Text(label,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                    onPressed: id == null
+                                        ? null
+                                        : () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    CampaignDetailScreen(
+                                                        campaignId: id),
+                                              ),
+                                            );
+                                          },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 44,
@@ -698,82 +807,117 @@ class _ExploreScreenState extends State<ExploreScreen>
                             ),
                     ),
                     const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white,
-                            AppTheme.primary.withOpacity(0.03),
-                          ],
-                        ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppTheme.primary.withOpacity(0.08),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6)),
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4)),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                    color: AppTheme.primary.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(12)),
-                                child: const Icon(Icons.loyalty_rounded,
-                                    color: AppTheme.primary, size: 24),
+                        onTap: () {
+                          final auth = context.read<AuthProvider>();
+                          if (!auth.isLoggedIn) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Log in to view your stamp collection'),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Stamp Program',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                                fontWeight: FontWeight.bold)),
-                                    if (_stampCampaignName != null)
-                                      Text(_stampCampaignName!,
-                                          style: TextStyle(
-                                              color: AppTheme.textSecondary,
-                                              fontSize: 13)),
-                                  ],
-                                ),
-                              ),
+                            );
+                            return;
+                          }
+                          Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const StampsScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white,
+                                AppTheme.primary.withOpacity(0.03),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: AppTheme.primary.withOpacity(0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6)),
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4)),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: _stampTotal > 0
-                                  ? (_stampProgress / _stampTotal)
-                                      .clamp(0.0, 1.0)
-                                  : 0,
-                              minHeight: 12,
-                              backgroundColor: AppTheme.background,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primary),
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                        color:
+                                            AppTheme.primary.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(12)),
+                                    child: const Icon(Icons.loyalty_rounded,
+                                        color: AppTheme.primary, size: 24),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Stamp Program',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                        if (_stampCampaignName != null)
+                                          Text(_stampCampaignName!,
+                                              style: TextStyle(
+                                                  color: AppTheme.textSecondary,
+                                                  fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: AppTheme.textSecondary
+                                        .withOpacity(0.7),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: _stampTotal > 0
+                                      ? (_stampProgress / _stampTotal)
+                                          .clamp(0.0, 1.0)
+                                      : 0,
+                                  minHeight: 12,
+                                  backgroundColor: AppTheme.background,
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                          AppTheme.primary),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                  '$_stampProgress / $_stampTotal stamps earned',
+                                  style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13)),
+                            ],
                           ),
-                          const SizedBox(height: 10),
-                          Text('$_stampProgress / $_stampTotal stamps earned',
-                              style: TextStyle(
-                                  color: AppTheme.textSecondary, fontSize: 13)),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

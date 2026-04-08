@@ -246,7 +246,6 @@ class _ProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final iconColor = isDestructive ? Colors.red : AppTheme.primary;
 
@@ -258,14 +257,12 @@ class _ProfileTile extends StatelessWidget {
         border: isDestructive
             ? Border.all(color: Colors.red.withOpacity(0.2), width: 1.3)
             : null,
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 1))
-              ],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 1)),
+        ],
       ),
       child: ListTile(
         leading: Container(

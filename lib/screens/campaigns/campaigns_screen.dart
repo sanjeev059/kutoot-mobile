@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
@@ -163,36 +164,97 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   Future<void> _onEnterCampaign(_CampaignData campaign) async {
     final id = campaign.id;
     if (id == null) {
-      _showInfo(
-        'Entry noted. Keep completing Kutoot activities to unlock this reward.',
+      await _showCampaignJoinDialog(
+        'This preview campaign is not linked to your account yet. Open Rewards from the bottom bar and tap a live campaign to see full details.',
+        const [
+          'Go to Rewards and choose a campaign.',
+          'Tap “Enter via app tasks” (join) when logged in.',
+          'Earn stamps by paying at partner stores with your Kutoot QR.',
+        ],
       );
       return;
     }
     try {
       final response = await _api.participateInCampaign(id);
       final body = response.data;
-      String msg = 'You\'re in this Kutoot campaign.';
-      if (body is Map && body['message'] != null) {
-        msg = body['message'].toString();
-      }
-      final title = campaign.title.trim();
-      if (title.isNotEmpty) {
-        msg = '$msg — $title';
+      String msg = 'You\'re in this campaign.';
+      List<String> steps = [];
+      if (body is Map) {
+        if (body['message'] != null) msg = body['message'].toString();
+        final data = body['data'];
+        if (data is Map && data['what_next'] is List) {
+          steps = (data['what_next'] as List).map((e) => e.toString()).toList();
+        }
       }
       if (!mounted) return;
-      _showInfo(msg);
-    } catch (_) {
+      await _showCampaignJoinDialog(msg, steps);
+    } catch (e) {
       if (!mounted) return;
-      _showInfo(
-        'You can join this campaign by app engagement tasks. Please try again shortly.',
-      );
+      String msg =
+          'Could not join right now. Check that you are logged in and try again.';
+      List<String> steps = const [
+        'Log in with your verified mobile number.',
+        'Pay at a Kutoot partner store in the app.',
+        'Show your QR when you pay — stamps count toward campaigns you join.',
+      ];
+      if (e is DioException) {
+        final d = e.response?.data;
+        if (d is Map && d['message'] != null) {
+          msg = d['message'].toString();
+        }
+        final data = d is Map ? d['data'] : null;
+        if (data is Map && data['what_next'] is List) {
+          steps = (data['what_next'] as List).map((x) => x.toString()).toList();
+        }
+      }
+      await _showCampaignJoinDialog(msg, steps);
     }
   }
 
-  void _showInfo(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _showCampaignJoinDialog(String message, List<String> steps) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Campaign'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message),
+              if (steps.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'What to do next',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                ...steps.map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(child: Text(s)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
+
 }
 
 class _CampaignHeader extends StatelessWidget {
@@ -220,7 +282,15 @@ class _CampaignHeader extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
-          const SizedBox(width: 4),
+          Expanded(
+            child: Center(
+              child: Image.asset(
+                _kLogoAsset,
+                height: 40,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -230,6 +300,7 @@ class _CampaignHeader extends StatelessWidget {
                   Border.all(color: AppTheme.accentWarm.withValues(alpha: 0.20)),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.location_on,
                     size: 15, color: AppTheme.accentWarm),
@@ -245,41 +316,35 @@ class _CampaignHeader extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(
-            child: Center(
-              child: Image.asset(
-                _kLogoAsset,
-                height: 48,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
           if (rightLabel != null &&
               rightLabel!.isNotEmpty &&
               onRightTap != null)
-            InkWell(
-              onTap: onRightTap,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  rightLabel!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    letterSpacing: 1.1,
-                    fontWeight: FontWeight.w800,
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: InkWell(
+                onTap: onRightTap,
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    rightLabel!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
             )
           else
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
         ],
       ),
     );
@@ -483,6 +548,16 @@ class _CampaignTicket extends StatelessWidget {
                         );
                       }),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bars = overall campaign progress (community). Your stamps are in “Your Engagement” above.',
+                      style: TextStyle(
+                        fontSize: 8,
+                        height: 1.25,
+                        color: AppTheme.textSecondary.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 12),
                   SizedBox(
@@ -497,7 +572,7 @@ class _CampaignTicket extends StatelessWidget {
                           letterSpacing: 1.1,
                         ),
                       ),
-                      child: const Text('ENTER VIA APP TASKS'),
+                      child: const Text('JOIN CAMPAIGN'),
                     ),
                   ),
                 ],

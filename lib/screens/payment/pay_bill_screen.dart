@@ -82,10 +82,10 @@ class _PayBillScreenState extends State<PayBillScreen> {
     }
   }
 
+  /// Low fixed fee for testing (production may use tiered fees).
   int _platformFee(double amount) {
     if (kDebugMode) return 1;
-    if (amount >= 1000) return 20;
-    return 30;
+    return 2;
   }
 
   List<_CouponOption> _couponOptions() {
@@ -614,7 +614,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Vibrant Drops',
+              const Text('Vibrant Rewards',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
               GestureDetector(
                 onTap: () {
@@ -624,7 +624,7 @@ class _PayBillScreenState extends State<PayBillScreen> {
                     curve: Curves.easeOut,
                   );
                 },
-                child: const Text('See All Drops',
+                child: const Text('See All Rewards',
                     style: TextStyle(
                         color: AppTheme.primary, fontWeight: FontWeight.w700)),
               ),

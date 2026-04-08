@@ -5,6 +5,7 @@ import '../../services/api_data_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 import '../payment/pay_bill_screen.dart';
+import '../../utils/maps_launch.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? store;
@@ -259,37 +260,17 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        final storeName = store?['name'] ?? 'Store';
-                        final mapsUrl =
-                            'https://maps.google.com/?q=${Uri.encodeComponent('$storeName MG Road Bangalore')}';
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Directions'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('$storeName\nMG Road, Bangalore'),
-                                const SizedBox(height: 12),
-                                SelectableText(
-                                  mapsUrl,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1565C0),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                      onPressed: () async {
+                        final ok = await openStoreInMaps(store ?? {});
+                        if (!context.mounted) return;
+                        if (!ok) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Could not open Maps. Try installing Google Maps.'),
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('CLOSE'),
-                              ),
-                            ],
-                          ),
-                        );
+                          );
+                        }
                       },
                       icon: const Icon(Icons.directions),
                       label: const Text('Directions'),
@@ -322,7 +303,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'EXCLUSIVE DROPS',
+                        'EXCLUSIVE REWARDS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -332,7 +313,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'Curated Drops',
+                        'Curated Rewards',
                         style: TextStyle(
                             fontSize: 20, fontWeight: FontWeight.w800),
                       ),
@@ -559,7 +540,7 @@ class _AllCouponsScreenState extends State<_AllCouponsScreen> {
                         color: Colors.black.withValues(alpha: 0.3)),
                     const SizedBox(width: 10),
                     Text(
-                      'Search brands, banks or items...',
+                      'Search stores, banks or items...',
                       style: TextStyle(
                         color: Colors.black.withValues(alpha: 0.3),
                         fontWeight: FontWeight.w500,

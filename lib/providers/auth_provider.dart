@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../api/kutoot_api.dart';
 import '../services/device_service.dart';
 
 class AuthProvider with ChangeNotifier {
+  static const _prefsLastMobileKey = 'last_login_mobile_digits';
+
   final _api = KutootApi();
   final _device = DeviceService();
 
@@ -24,18 +27,81 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await _api.getUser();
-      final wrapper =
-          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
-      _user = wrapper != null && wrapper['data'] is Map
-          ? Map<String, dynamic>.from(wrapper['data'] as Map)
-          : wrapper;
-    } catch (e) {
+      final token = await _api.readAuthToken();
+      if (token == null || token.isEmpty) {
+        final restored = await _tryRestoreDeviceSession();
+        if (!restored) {
+          _user = null;
+        }
+      } else {
+        try {
+          final res = await _api.getUser();
+          final wrapper = res.data is Map
+              ? Map<String, dynamic>.from(res.data as Map)
+              : null;
+          _user = wrapper != null && wrapper['data'] is Map
+              ? Map<String, dynamic>.from(wrapper['data'] as Map)
+              : wrapper;
+        } catch (e) {
+          _user = null;
+          if (e is DioException && e.response?.statusCode == 401) {
+            final restored = await _tryRestoreDeviceSession();
+            if (!restored) {
+              _user = null;
+            }
+          }
+        }
+      }
+    } catch (_) {
       _user = null;
     } finally {
       _isLoading = false;
       _hasChecked = true;
       notifyListeners();
+    }
+  }
+
+  /// Server recognizes this device (FCM row or users.device_id) → new token without OTP.
+  Future<bool> _tryRestoreDeviceSession() async {
+    try {
+      await _device.getDeviceFingerprint();
+      final res = await _api.restoreSession();
+      final wrapper =
+          res.data is Map ? Map<String, dynamic>.from(res.data as Map) : null;
+      final data = wrapper != null && wrapper['data'] is Map
+          ? Map<String, dynamic>.from(wrapper['data'] as Map)
+          : wrapper;
+      if (data != null && data['token'] != null) {
+        await _api.setToken(data['token'] as String);
+        _user = data['user'] is Map
+            ? Map<String, dynamic>.from(data['user'] as Map)
+            : null;
+        await _persistLastMobileFromUser();
+        return true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('restoreSession: $e');
+      }
+    }
+    return false;
+  }
+
+  static Future<String?> loadLastLoginMobileDigits() async {
+    final p = await SharedPreferences.getInstance();
+    final v = p.getString(_prefsLastMobileKey);
+    if (v == null || v.length != 10) return null;
+    return v;
+  }
+
+  Future<void> _persistLastMobileFromUser() async {
+    final m = _user?['mobile']?.toString().replaceAll(RegExp(r'\D'), '') ?? '';
+    if (m.length == 10) {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_prefsLastMobileKey, m);
+    } else if (m.length == 12 && m.startsWith('91')) {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_prefsLastMobileKey, m.substring(2));
     }
   }
 
@@ -84,6 +150,7 @@ class AuthProvider with ChangeNotifier {
             ? Map<String, dynamic>.from(data['user'] as Map)
             : null;
         _enrichPhoneFromIdentifier(identifier);
+        await _persistLastMobileFromUser();
         _isLoading = false;
         notifyListeners();
         return true;

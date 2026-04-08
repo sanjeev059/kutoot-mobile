@@ -54,6 +54,12 @@ class LogoutConfirmScreen extends StatelessWidget {
                     await context.read<AuthProvider>().logout();
                   } catch (_) {}
                   if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('You have been logged out.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (_) => GuestHomeScreen(cityName: cityName),

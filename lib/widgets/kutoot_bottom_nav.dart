@@ -3,7 +3,7 @@ import '../theme/app_theme.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/home/kinetic_home_screens.dart';
 import '../screens/profile/profile_hub_screen.dart';
-import '../screens/rewards/rewards_deals_screen.dart';
+import '../screens/rewards/rewards_deals_screen.dart' show RewardsHubScreen;
 
 class KutootBottomNav extends StatelessWidget {
   final int activeIndex;
@@ -20,7 +20,6 @@ class KutootBottomNav extends StatelessWidget {
   void _navigate(BuildContext context, int i) {
     if (i == activeIndex) return;
 
-    Widget screen;
     switch (i) {
       case 0:
         Navigator.pushAndRemoveUntil(
@@ -34,32 +33,39 @@ class KutootBottomNav extends StatelessWidget {
         );
         return;
       case 1:
-        screen = RewardsDealsScreen(cityName: cityName);
-        break;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => RewardsHubScreen(cityName: cityName),
+          ),
+          (r) => false,
+        );
+        return;
       case 2:
         if (!isLoggedIn) {
           Navigator.push(
               context, MaterialPageRoute(builder: (_) => const LoginScreen()));
           return;
         }
-        screen = ProfileHubScreen(cityName: cityName);
-        break;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => ProfileHubScreen(cityName: cityName),
+          ),
+          (r) => false,
+        );
+        return;
       default:
         return;
     }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    const items = ['HOME', 'DROPS', 'PROFILE'];
+    const items = ['HOME', 'REWARDS', 'PROFILE'];
     const icons = [
       Icons.home_rounded,
-      Icons.local_offer_rounded,
+      Icons.sell_rounded,
       Icons.person_rounded,
     ];
     final bottomPad = MediaQuery.of(context).padding.bottom;

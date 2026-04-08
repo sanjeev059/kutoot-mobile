@@ -30,7 +30,6 @@ class KutootApi {
     _dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -83,6 +82,15 @@ class KutootApi {
     } catch (_) {}
   }
 
+  /// Non-null when a session token exists (may still be expired).
+  Future<String?> readAuthToken() async {
+    try {
+      return await _storage.read(key: 'auth_token');
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ─── Auth ─────────────────────────────────────────────────────────
   Future<Response> login(Map<String, dynamic> data) =>
       _dio.post('/auth/login', data: data);
@@ -105,6 +113,9 @@ class KutootApi {
         if (deviceId != null) 'device_id': deviceId,
         if (deviceModel != null) 'device_model': deviceModel,
       });
+
+  /// Silent re-login when the device was already used with this app (server-side link).
+  Future<Response> restoreSession() => _dio.post('/auth/restore-session');
 
   Future<Response> getUser() => _dio.get('/auth/me');
 
