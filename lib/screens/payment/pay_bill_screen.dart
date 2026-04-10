@@ -88,6 +88,149 @@ class _PayBillScreenState extends State<PayBillScreen> {
     return 2;
   }
 
+  /// Opens Razorpay checkout. [upiAppPackage] null = all methods; empty string =
+  /// UPI with in-checkout app picker (Android); non-empty = intent to that UPI app.
+  void _openRazorpayCheckout(
+    String key,
+    String orderId,
+    int orderAmount,
+    Map<dynamic, dynamic> order, {
+    String? upiAppPackage,
+  }) {
+    if (!mounted) return;
+    setState(() => _paying = true);
+    final options = <String, dynamic>{
+      'key': key,
+      'amount': orderAmount,
+      'currency': order['currency'] ?? 'INR',
+      'name': order['merchant_name'] ?? 'Kutoot',
+      'description': 'Bill Payment',
+      'order_id': orderId,
+      'theme': {'color': '#E23744'},
+    };
+    if (upiAppPackage != null &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android) {
+      options['method'] = 'upi';
+      if (upiAppPackage.isNotEmpty) {
+        options['upi_app_package_name'] = upiAppPackage;
+      }
+    }
+    _razorpay.open(options);
+  }
+
+  /// Zomato-style UPI grid: each option opens Razorpay so the order is paid and
+  /// verify + stamps work (raw `upi://` would skip Razorpay and leave txn pending).
+  Future<void> _showUpiAppPicker({
+    required double amountInRupees,
+    required void Function({String? upiAppPackage}) openRazorpayCheckout,
+  }) async {
+    final amt = amountInRupees.toStringAsFixed(2);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        void pickUpiOnAndroid(String package) {
+          Navigator.pop(ctx);
+          if (!kIsWeb &&
+              defaultTargetPlatform == TargetPlatform.android) {
+            openRazorpayCheckout(upiAppPackage: package);
+          } else {
+            openRazorpayCheckout();
+          }
+        }
+
+        Widget appTile(String label, VoidCallback onTap) {
+          return SizedBox(
+            width: MediaQuery.sizeOf(ctx).width / 2 - 28,
+            child: OutlinedButton(
+              onPressed: onTap,
+              child: Text(label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.paddingOf(ctx).bottom + 16,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Pay ₹$amt',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose a UPI app',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Payment runs through Razorpay so your stamps and history update correctly.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.textSecondary.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  appTile('PhonePe',
+                      () => pickUpiOnAndroid('com.phonepe.app')),
+                  appTile('Paytm', () => pickUpiOnAndroid('net.one97.paytm')),
+                  appTile(
+                      'Google Pay',
+                      () => pickUpiOnAndroid(
+                          'com.google.android.apps.nbu.paisa.user')),
+                  appTile('BHIM UPI',
+                      () => pickUpiOnAndroid('in.org.npci.upiapp')),
+                  appTile('Other UPI', () => pickUpiOnAndroid('')),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  openRazorpayCheckout();
+                },
+                child: const Text(
+                  'More options (card / netbanking / wallets)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   List<_CouponOption> _couponOptions() {
     return const [
       _CouponOption(
@@ -291,15 +434,19 @@ class _PayBillScreenState extends State<PayBillScreen> {
         throw Exception('Invalid payment order response');
       }
 
-      _razorpay.open({
-        'key': key,
-        'amount': orderAmount,
-        'currency': order['currency'] ?? 'INR',
-        'name': order['merchant_name'] ?? 'Kutoot',
-        'description': 'Bill Payment',
-        'order_id': orderId,
-        'theme': {'color': '#E23744'},
-      });
+      if (!mounted) return;
+      setState(() => _paying = false);
+
+      await _showUpiAppPicker(
+        amountInRupees: amount,
+        openRazorpayCheckout: ({String? upiAppPackage}) => _openRazorpayCheckout(
+              key,
+              orderId,
+              orderAmount,
+              order,
+              upiAppPackage: upiAppPackage,
+            ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _paying = false);
