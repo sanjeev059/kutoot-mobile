@@ -47,6 +47,8 @@ class ApiDataService {
             m['branch_name']?.toString() ??
             'Store';
         final img = _resolveImage(m, merchant);
+        final lat = _coordFrom(m, merchant, const ['latitude', 'lat']);
+        final lng = _coordFrom(m, merchant, const ['longitude', 'lng', 'long']);
 
         return {
           'id': m['id'] ?? 0,
@@ -56,6 +58,8 @@ class ApiDataService {
           'badge': '',
           'rating': (m['star_rating'] ?? '4.5').toString(),
           'distance': m['distance']?.toString() ?? '',
+          'latitude': lat,
+          'longitude': lng,
           'address': m['address']?.toString() ?? '',
           'city': m['city'] is Map ? m['city']['name']?.toString() ?? '' : '',
           'opening_hours':
@@ -68,6 +72,22 @@ class ApiDataService {
     } catch (_) {
       return _fallbackStores;
     }
+  }
+
+  static double? _coordFrom(
+    Map<String, dynamic> m,
+    Map<String, dynamic> merchant,
+    List<String> keys,
+  ) {
+    for (final map in [m, merchant]) {
+      for (final k in keys) {
+        final v = map[k];
+        if (v is num) return v.toDouble();
+        final d = double.tryParse(v?.toString() ?? '');
+        if (d != null) return d;
+      }
+    }
+    return null;
   }
 
   static String _resolveImage(

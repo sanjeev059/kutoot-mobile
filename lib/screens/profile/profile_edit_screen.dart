@@ -32,6 +32,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _nameFocus = FocusNode();
   bool _saving = false;
   bool _uploadingAvatar = false;
   final _picker = ImagePicker();
@@ -80,6 +81,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   @override
   void dispose() {
+    _nameFocus.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -92,9 +94,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       if (user != null) {
         _nameController.text = user['name']?.toString() ?? '';
         _emailController.text = user['email']?.toString() ?? '';
-        final p = user['mobile']?.toString() ??
-            user['phone']?.toString() ??
-            '';
+        final p = user['mobile']?.toString() ?? user['phone']?.toString() ?? '';
         var digits = p.replaceAll(RegExp(r'\D'), '');
         if (digits.startsWith('91') && digits.length >= 12) {
           digits = digits.substring(2);
@@ -116,8 +116,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     }
     final savedPhone = prefs.getString('profile_phone');
     if (savedPhone != null && _phoneController.text.isEmpty) {
-      _phoneController.text =
-          savedPhone.replaceAll(RegExp(r'\D'), '').replaceAll(RegExp(r'^91'), '');
+      _phoneController.text = savedPhone
+          .replaceAll(RegExp(r'\D'), '')
+          .replaceAll(RegExp(r'^91'), '');
     }
     if (mounted) setState(() {});
   }
@@ -290,7 +291,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             ListTile(
               leading: const Icon(Icons.camera_alt, color: _primaryMaroon),
               title: Text('Take Photo',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                  style:
+                      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickImage(ImageSource.camera);
@@ -300,7 +302,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               leading: const Icon(Icons.photo_library_outlined,
                   color: _primaryMaroon),
               title: Text('Choose from Gallery',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                  style:
+                      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickImage(ImageSource.gallery);
@@ -316,8 +319,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final avatarUrl = ImageUtils.resolve(user?['profile_picture_url']);
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme)
-        .apply(bodyColor: _onSurface, displayColor: _onSurface);
+    final textTheme =
+        GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme)
+            .apply(bodyColor: _onSurface, displayColor: _onSurface);
 
     return Theme(
       data: Theme.of(context).copyWith(
@@ -357,97 +361,106 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Center(
-                        child: Column(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(999),
+                            onTap: () =>
+                                FocusScope.of(context).requestFocus(_nameFocus),
+                            child: Column(
                               children: [
-                                Container(
-                                  width: 132,
-                                  height: 132,
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: _primaryMaroon
-                                          .withValues(alpha: 0.12),
-                                      width: 4,
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 132,
+                                      height: 132,
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: _primaryMaroon.withValues(
+                                              alpha: 0.12),
+                                          width: 4,
+                                        ),
+                                        color: Colors.white,
+                                      ),
+                                      child: ClipOval(
+                                        child: avatarUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: avatarUrl,
+                                                fit: BoxFit.cover,
+                                                placeholder: (_, __) =>
+                                                    _avatarPlaceholder(),
+                                                errorWidget: (_, __, ___) =>
+                                                    _avatarPlaceholder(),
+                                              )
+                                            : _avatarPlaceholder(),
+                                      ),
                                     ),
-                                    color: Colors.white,
-                                  ),
-                                  child: ClipOval(
-                                    child: avatarUrl.isNotEmpty
-                                        ? CachedNetworkImage(
-                                            imageUrl: avatarUrl,
-                                            fit: BoxFit.cover,
-                                            placeholder: (_, __) =>
-                                                _avatarPlaceholder(),
-                                            errorWidget: (_, __, ___) =>
-                                                _avatarPlaceholder(),
-                                          )
-                                        : _avatarPlaceholder(),
-                                  ),
-                                ),
-                                if (_uploadingAvatar)
-                                  Positioned.fill(
-                                    child: ClipOval(
-                                      child: ColoredBox(
-                                        color: Colors.black38,
-                                        child: Center(
-                                          child: SizedBox(
-                                            width: 28,
-                                            height: 28,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white
-                                                  .withValues(alpha: 0.95),
+                                    if (_uploadingAvatar)
+                                      Positioned.fill(
+                                        child: ClipOval(
+                                          child: ColoredBox(
+                                            color: Colors.black38,
+                                            child: Center(
+                                              child: SizedBox(
+                                                width: 28,
+                                                height: 28,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2.5,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.95),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    Positioned(
+                                      right: 2,
+                                      bottom: 2,
+                                      child: Material(
+                                        color: _cameraOrange,
+                                        shape: const CircleBorder(),
+                                        elevation: 4,
+                                        child: InkWell(
+                                          customBorder: const CircleBorder(),
+                                          onTap: _showAvatarOptions,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.photo_camera_rounded,
+                                              color: Colors.white,
+                                              size: 20,
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                Positioned(
-                                  right: 2,
-                                  bottom: 2,
-                                  child: Material(
-                                    color: _cameraOrange,
-                                    shape: const CircleBorder(),
-                                    elevation: 4,
-                                    child: InkWell(
-                                      customBorder: const CircleBorder(),
-                                      onTap: _showAvatarOptions,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.photo_camera_rounded,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'UPDATE PHOTO',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 2,
+                                    color: _primaryMaroon,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'UPDATE PHOTO',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
-                                color: _primaryMaroon,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 36),
@@ -461,6 +474,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameController,
+                        focusNode: _nameFocus,
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -537,8 +551,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 fontSize: 16,
                                 color: _onSurface.withValues(alpha: 0.72),
                               ),
-                              decoration: _pillDecoration(hint: '10-digit mobile')
-                                  .copyWith(
+                              decoration:
+                                  _pillDecoration(hint: '10-digit mobile')
+                                      .copyWith(
                                 suffixIcon: Icon(
                                   Icons.lock_outline_rounded,
                                   color: _onSurface.withValues(alpha: 0.35),
@@ -600,8 +615,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                         children: [
                                           Text(
                                             'Save Changes',
-                                            style:
-                                                GoogleFonts.plusJakartaSans(
+                                            style: GoogleFonts.plusJakartaSans(
                                               fontWeight: FontWeight.w800,
                                               fontSize: 17,
                                               color: Colors.white,

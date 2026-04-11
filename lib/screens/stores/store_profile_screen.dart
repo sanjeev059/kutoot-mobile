@@ -5,12 +5,15 @@ import '../../services/api_data_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 import '../payment/pay_bill_screen.dart';
+import '../profile/profile_hub_screen.dart';
 import '../../utils/maps_launch.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? store;
+  /// Used after a successful bill payment (navigate to profile / stamps hub).
+  final String? cityName;
 
-  const StoreProfileScreen({super.key, this.store});
+  const StoreProfileScreen({super.key, this.store, this.cityName});
 
   @override
   State<StoreProfileScreen> createState() => _StoreProfileScreenState();
@@ -279,15 +282,29 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PayBillScreen(
-                            merchantLocation: store ?? {},
-                            initialCouponCode: _appliedCode,
+                      onPressed: () async {
+                        final paid = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PayBillScreen(
+                              merchantLocation: store ?? {},
+                              initialCouponCode: _appliedCode,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                        if (!context.mounted || paid != true) return;
+                        final city = widget.cityName ??
+                            store?['city']?.toString() ??
+                            store?['city_name']?.toString() ??
+                            'India';
+                        await Navigator.push<void>(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                ProfileHubScreen(cityName: city),
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.payments),
                       label: const Text('Pay Bill'),
                     ),

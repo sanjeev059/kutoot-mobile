@@ -8,7 +8,17 @@ import 'legal_loading_screen.dart';
 import 'need_help_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// Shown in copy when set (e.g. guest browsing a city).
+  final String? cityName;
+
+  /// Return to guest home, or replace stack with [GuestHomeScreen] — provided by each route.
+  final VoidCallback? onBrowseWithoutSignIn;
+
+  const LoginScreen({
+    super.key,
+    this.cityName,
+    this.onBrowseWithoutSignIn,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -309,7 +319,10 @@ class _LoginScreenState extends State<LoginScreen>
                         Text(
                           _otpSent
                               ? 'Code sent to +91 $_digits'
-                              : 'Enter your mobile number — we\'ll send a one-time code (OTP).',
+                              : (widget.cityName != null &&
+                                      widget.cityName!.trim().isNotEmpty
+                                  ? 'Enter your mobile — we\'ll send an OTP. Browsing ${widget.cityName!.trim()}.'
+                                  : 'Enter your mobile number — we\'ll send a one-time code (OTP).'),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
@@ -404,7 +417,8 @@ class _LoginScreenState extends State<LoginScreen>
                             width: double.infinity,
                             height: 52,
                             child: FilledButton(
-                              onPressed: _validPhone && !_sending ? _sendOtp : null,
+                              onPressed:
+                                  _validPhone && !_sending ? _sendOtp : null,
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppTheme.primary,
                                 foregroundColor: Colors.white,
@@ -470,8 +484,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800),
                                   decoration: InputDecoration(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(vertical: 14),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 14),
                                     filled: true,
                                     fillColor: const Color(0xFFF5E5DB),
                                     border: OutlineInputBorder(
@@ -481,8 +495,8 @@ class _LoginScreenState extends State<LoginScreen>
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                        color:
-                                            AppTheme.primary.withValues(alpha: 0.25),
+                                        color: AppTheme.primary
+                                            .withValues(alpha: 0.25),
                                         width: 2,
                                       ),
                                     ),
@@ -506,7 +520,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   style: TextStyle(
                                     color: _seconds == 0
                                         ? AppTheme.primary
-                                        : AppTheme.primary.withValues(alpha: 0.5),
+                                        : AppTheme.primary
+                                            .withValues(alpha: 0.5),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -516,7 +531,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 Text(
                                     ' in 0:${_seconds.toString().padLeft(2, '0')}s',
                                     style: const TextStyle(
-                                        color: Color(0x99594042), fontSize: 13)),
+                                        color: Color(0x99594042),
+                                        fontSize: 13)),
                             ],
                           ),
                           if (_verifying) ...[
@@ -613,6 +629,21 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                         ),
+                        if (widget.onBrowseWithoutSignIn != null) ...[
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: widget.onBrowseWithoutSignIn,
+                            child: const Text(
+                              'Browse without signing in',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textSecondary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -630,11 +661,9 @@ class _LoginScreenState extends State<LoginScreen>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(title,
-            style: const TextStyle(
-                fontWeight: FontWeight.w800, fontSize: 18)),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         content: SizedBox(
           height: 300,
           child: SingleChildScrollView(

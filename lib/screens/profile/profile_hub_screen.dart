@@ -602,12 +602,12 @@ class _StitchProfileAppBar extends StatelessWidget {
                   shape: const StadiumBorder(),
                 ),
                 child: Text(
-                  'UPGRADE',
+                  'MY STAMPS',
                   style: _StitchProfile.jakarta(
                     const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.8,
+                      letterSpacing: 1.2,
                       color: Colors.white,
                     ),
                   ),
@@ -1154,12 +1154,12 @@ class _StitchSubscriptionCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'UPGRADE NOW',
+                'MY STAMPS',
                 style: _StitchProfile.jakarta(
                   const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ),

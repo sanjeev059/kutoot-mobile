@@ -596,12 +596,12 @@ class _StampsScreenState extends State<StampsScreen> {
 
       _razorpay.open({
         'key': key,
-        'amount': amount,
+        'amount': amount.toString(),
         'currency': order['currency'] ?? 'INR',
         'name': order['merchant_name'] ?? 'Kutoot',
         'description': 'Stamp Reservation',
         'order_id': orderId,
-        'theme': {'color': '#AE1E3F'},
+        'theme.color': '#AE1E3F',
       });
     } catch (e) {
       if (!mounted) return;

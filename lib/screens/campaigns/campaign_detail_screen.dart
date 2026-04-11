@@ -235,6 +235,27 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                 ),
                               ),
                             ],
+                            const SizedBox(height: 16),
+                            _CampaignInfoMiniCard(
+                              icon: Icons.qr_code_scanner_rounded,
+                              title: 'Pay in the app',
+                              body:
+                                  'Pay at partner stores through Kutoot and show your QR — stamps count toward this campaign.',
+                            ),
+                            const SizedBox(height: 10),
+                            _CampaignInfoMiniCard(
+                              icon: Icons.stacked_line_chart_rounded,
+                              title: 'Bounty meter',
+                              body:
+                                  'Shows how close this campaign is to its community goal. Your stamps still help you qualify.',
+                            ),
+                            const SizedBox(height: 10),
+                            _CampaignInfoMiniCard(
+                              icon: Icons.calendar_month_rounded,
+                              title: 'Rules & timing',
+                              body:
+                                  'See “How to Play” and “Rules” below. Offers are valid at participating locations only.',
+                            ),
                             const SizedBox(height: 24),
                             _ExpandableSection(
                                 title: 'How to Play',
@@ -298,6 +319,69 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         ),
                       ),
                     ),
+    );
+  }
+}
+
+class _CampaignInfoMiniCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _CampaignInfoMiniCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE1BEC0).withValues(alpha: 0.45),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -168,8 +168,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         'This preview campaign is not linked to your account yet. Open Rewards from the bottom bar and tap a live campaign to see full details.',
         const [
           'Go to Rewards and choose a campaign.',
-          'Tap “Enter via app tasks” (join) when logged in.',
-          'Earn stamps by paying at partner stores with your Kutoot QR.',
+          'Tap “Join campaign” when logged in.',
+          'Earn stamps by paying at partner stores in Kutoot and showing your QR at checkout.',
         ],
       );
       return;
@@ -191,11 +191,11 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     } catch (e) {
       if (!mounted) return;
       String msg =
-          'Could not join right now. Check that you are logged in and try again.';
+          'Could not join right now. Make sure you are logged in with your mobile number and try again.';
       List<String> steps = const [
         'Log in with your verified mobile number.',
-        'Pay at a Kutoot partner store in the app.',
-        'Show your QR when you pay — stamps count toward campaigns you join.',
+        'Open Pay from a partner store or scan the store QR in Kutoot.',
+        'Complete payment in the app — stamps are added automatically for campaigns you joined.',
       ];
       if (e is DioException) {
         final d = e.response?.data;
@@ -550,7 +550,8 @@ class _CampaignTicket extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Bars = overall campaign progress (community). Your stamps are in “Your Engagement” above.',
+                      'Bars show how close this campaign is to its community-wide stamp goal. '
+                      'Your own stamps are shown under “Your Engagement” above.',
                       style: TextStyle(
                         fontSize: 8,
                         height: 1.25,

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/kutoot_api.dart';
 import '../../theme/app_theme.dart';
+import '../payment/pay_bill_screen.dart';
 
 class QrScanScreen extends StatefulWidget {
   const QrScanScreen({super.key});
@@ -21,8 +22,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
   String? _message;
   bool _showManualEntry = false;
   final _codeController = TextEditingController();
-  Map<String, dynamic>? _lastScanData;
-
   @override
   void dispose() {
     _controller.dispose();
@@ -68,7 +67,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
     setState(() {
       _processing = true;
       _message = null;
-      _lastScanData = null;
     });
     try {
       final res = await _api.scanQr(token);
@@ -79,16 +77,24 @@ class _QrScanScreenState extends State<QrScanScreen> {
           ? Map<String, dynamic>.from(data['data'] as Map)
           : data;
       final merchantLocation = payload['merchant_location'];
-      final branchName = merchantLocation is Map
-          ? (merchantLocation['branch_name']?.toString() ?? 'merchant')
-          : 'merchant';
-      final msg = payload['message']?.toString() ?? 'Connected to $branchName';
+      if (merchantLocation is Map && mounted) {
+        final loc = Map<String, dynamic>.from(merchantLocation);
+        setState(() => _processing = false);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => PayBillScreen(merchantLocation: loc),
+          ),
+        );
+        return;
+      }
+      final branchName = 'merchant';
+      final msg = payload['message']?.toString() ?? 'Invalid store QR';
 
       if (mounted) {
         setState(() {
           _processing = false;
           _message = msg;
-          _lastScanData = payload;
         });
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(msg)));
@@ -178,26 +184,12 @@ class _QrScanScreenState extends State<QrScanScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color:
-                            _lastScanData != null ? Colors.green : Colors.red,
+                        color: Colors.red.shade700,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(_message!,
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                if (_lastScanData != null)
-                  Positioned(
-                    bottom: 92,
-                    left: 20,
-                    right: 20,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context, _lastScanData),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary),
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Continue'),
                     ),
                   ),
                 if (_processing)

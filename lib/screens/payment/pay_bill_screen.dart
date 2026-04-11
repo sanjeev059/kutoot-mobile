@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
 import '../../services/campaign_entry_service.dart';
+import '../../services/razorpay_native_android.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
 
@@ -23,7 +24,7 @@ class PayBillScreen extends StatefulWidget {
 
 class _PayBillScreenState extends State<PayBillScreen> {
   final _api = KutootApi();
-  final _amountController = TextEditingController(text: '200');
+  final _amountController = TextEditingController();
   final _dealsScrollController = ScrollController();
   late final Razorpay _razorpay;
 
@@ -43,11 +44,21 @@ class _PayBillScreenState extends State<PayBillScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      RazorpayNativeAndroid.bind(
+        onSuccess: _onPaymentSuccess,
+        onError: _onPaymentError,
+        onExternalWallet: _onExternalWallet,
+      );
+    }
     _loadCampaigns();
   }
 
   @override
   void dispose() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      RazorpayNativeAndroid.unbind();
+    }
     _razorpay.clear();
     _amountController.dispose();
     _dealsScrollController.dispose();
@@ -88,42 +99,73 @@ class _PayBillScreenState extends State<PayBillScreen> {
     return 2;
   }
 
-  /// Opens Razorpay checkout. [upiAppPackage] null = all methods; empty string =
-  /// UPI with in-checkout app picker (Android); non-empty = intent to that UPI app.
-  void _openRazorpayCheckout(
+  /// [upiAppPackage] null = full checkout ("More options"). On Android when set,
+  /// checkout is **UPI-only** with **intent** enabled and **collect** disabled so
+  /// Razorpay opens PSP apps instead of the @VPA form (see Razorpay Android
+  /// `method.upi.intent` / `method.upi.collect` docs and sample-app issues).
+  Future<void> _openRazorpayCheckout(
     String key,
     String orderId,
     int orderAmount,
     Map<dynamic, dynamic> order, {
     String? upiAppPackage,
-  }) {
+  }) async {
     if (!mounted) return;
     setState(() => _paying = true);
+    // Android SDK expects amount in sub-units (paise) as a string in many samples.
+    final amountStr = orderAmount.toString();
     final options = <String, dynamic>{
       'key': key,
-      'amount': orderAmount,
+      'amount': amountStr,
       'currency': order['currency'] ?? 'INR',
       'name': order['merchant_name'] ?? 'Kutoot',
       'description': 'Bill Payment',
       'order_id': orderId,
-      'theme': {'color': '#E23744'},
+      // Dotted keys match Razorpay Android JSON samples (avoids nested-map quirks).
+      'theme.color': '#E23744',
     };
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      options['webview_intent'] = true;
+    }
     if (upiAppPackage != null &&
         !kIsWeb &&
         defaultTargetPlatform == TargetPlatform.android) {
-      options['method'] = 'upi';
+      // Prefer intent; disable collect (manual @UPI) per Razorpay support (#217 inverse).
+      options['method'] = <String, dynamic>{
+        'upi': <String, dynamic>{
+          'intent': true,
+          'collect': false,
+        },
+        'card': false,
+        'netbanking': false,
+        'wallet': false,
+      };
+      options['_[flow]'] = 'intent';
+      options['display_logo'] = false;
       if (upiAppPackage.isNotEmpty) {
         options['upi_app_package_name'] = upiAppPackage;
       }
     }
-    _razorpay.open(options);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await RazorpayNativeAndroid.open(options);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _paying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open payment: $e')),
+        );
+      }
+    } else {
+      _razorpay.open(options);
+    }
   }
 
   /// Zomato-style UPI grid: each option opens Razorpay so the order is paid and
   /// verify + stamps work (raw `upi://` would skip Razorpay and leave txn pending).
   Future<void> _showUpiAppPicker({
     required double amountInRupees,
-    required void Function({String? upiAppPackage}) openRazorpayCheckout,
+    required Future<void> Function({String? upiAppPackage}) openRazorpayCheckout,
   }) async {
     final amt = amountInRupees.toStringAsFixed(2);
     await showModalBottomSheet<void>(
@@ -186,7 +228,9 @@ class _PayBillScreenState extends State<PayBillScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Payment runs through Razorpay so your stamps and history update correctly.',
+                'Opens your UPI app with the correct amount (no manual @UPI typing). '
+                'PhonePe needs a bank-linked UPI account for app-open to work. '
+                'Stamps update after payment completes.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.textSecondary.withValues(alpha: 0.9),
@@ -318,6 +362,14 @@ class _PayBillScreenState extends State<PayBillScreen> {
         _readInt(widget.merchantLocation['merchant_location_id']) ??
         _readInt(widget.merchantLocation['location_id']);
 
+    if (breakdown.baseBill <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter your bill amount first'),
+        ),
+      );
+      return;
+    }
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid bill amount')),
@@ -612,9 +664,11 @@ class _PayBillScreenState extends State<PayBillScreen> {
         widget.merchantLocation['name']?.toString() ??
         'Westside, Forum Mall';
     final breakdown = _calculateBreakdown();
-    final stampsEarned = ((breakdown.baseBill / 400).floor() +
-            (_selectedCoupon() != null ? 1 : 0))
-        .clamp(1, 99);
+    final stampsEarned = breakdown.baseBill <= 0
+        ? 0
+        : ((breakdown.baseBill / 400).floor() +
+                (_selectedCoupon() != null ? 1 : 0))
+            .clamp(1, 99);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
@@ -742,8 +796,10 @@ class _PayBillScreenState extends State<PayBillScreen> {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'You will earn $stampsEarned stamps from this visit',
-                          maxLines: 1,
+                          breakdown.baseBill <= 0
+                              ? 'Enter bill amount to see stamps you can earn'
+                              : 'You will earn $stampsEarned stamps from this visit',
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
@@ -880,7 +936,9 @@ class _PayBillScreenState extends State<PayBillScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _paying ? null : _startPayment,
+              onPressed: (_paying || breakdown.baseBill <= 0)
+                  ? null
+                  : _startPayment,
               child: _paying
                   ? const SizedBox(
                       height: 20,

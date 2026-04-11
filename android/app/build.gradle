@@ -58,3 +58,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Pin ≥1.6.37 for UPI intent fixes; aligns with razorpay_flutter's 1.6.+.
+    implementation 'com.razorpay:checkout:1.6.41'
+}

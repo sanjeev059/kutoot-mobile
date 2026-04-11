@@ -339,6 +339,7 @@ class _RewardsHubScreenState extends State<RewardsHubScreen> {
                               context,
                               MaterialPageRoute<void>(
                                 builder: (_) => StoreProfileScreen(
+                                  cityName: widget.cityName,
                                   store: {
                                     'id': id,
                                     'name': d.brandName,
@@ -375,7 +376,7 @@ class _RewardsHubScreenState extends State<RewardsHubScreen> {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 16, 4),
+        padding: const EdgeInsets.fromLTRB(4, 6, 10, 6),
         child: Row(
           children: [
             IconButton(
@@ -387,42 +388,49 @@ class _RewardsHubScreenState extends State<RewardsHubScreen> {
             Expanded(
               child: Align(
                 alignment: Alignment.center,
-                child: Image.asset(
-                  AppTheme.logoAsset,
-                  height: 30,
-                  fit: BoxFit.contain,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Image.asset(
+                    AppTheme.logoAsset,
+                    height: 28,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: AppTheme.secondaryContainer.withValues(alpha: 0.25),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryContainer.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: AppTheme.secondaryContainer.withValues(alpha: 0.25),
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.location_on,
-                      size: 13, color: AppTheme.secondaryContainer),
-                  const SizedBox(width: 3),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 96),
-                    child: Text(
-                      '${widget.cityName} ▾',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.secondaryContainer,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 10,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on,
+                        size: 12, color: AppTheme.secondaryContainer),
+                    const SizedBox(width: 2),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 88),
+                      child: Text(
+                        '${widget.cityName} ▾',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.secondaryContainer,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

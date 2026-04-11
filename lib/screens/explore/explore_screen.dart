@@ -160,17 +160,22 @@ class _ExploreScreenState extends State<ExploreScreen>
         final i = e.key;
         final c = e.value;
         return Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 6),
           child: FilterChip(
-            avatar: Icon(c.$2, size: 20, color: AppTheme.primary),
-            label: Text(c.$1),
+            avatar: Icon(c.$2, size: 16, color: AppTheme.primary),
+            label: Text(
+              c.$1,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
             selected: _selectedCategoryIndex == i,
             onSelected: (sel) {
               if (sel) _fetchMerchantsForCategoryIndex(i);
             },
             selectedColor: AppTheme.primary.withOpacity(0.15),
             backgroundColor: AppTheme.background,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
           ),
         );
       }).toList();
@@ -197,17 +202,26 @@ class _ExploreScreenState extends State<ExploreScreen>
             )
           : Icon(icon, size: 20, color: AppTheme.primary);
       return Padding(
-        padding: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.only(right: 6),
         child: FilterChip(
-          avatar: avatar,
-          label: Text(name),
+          avatar: SizedBox(
+            width: 18,
+            height: 18,
+            child: FittedBox(child: avatar),
+          ),
+          label: Text(
+            name,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
           selected: _selectedCategoryIndex == i,
           onSelected: (sel) {
             if (sel) _fetchMerchantsForCategoryIndex(i);
           },
           selectedColor: AppTheme.primary.withOpacity(0.15),
           backgroundColor: AppTheme.background,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
         ),
       );
     }).toList();

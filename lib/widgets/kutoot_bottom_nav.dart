@@ -44,7 +44,22 @@ class KutootBottomNav extends StatelessWidget {
       case 2:
         if (!isLoggedIn) {
           Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => LoginScreen(
+                cityName: cityName,
+                onBrowseWithoutSignIn: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => GuestHomeScreen(cityName: cityName),
+                    ),
+                    (r) => false,
+                  );
+                },
+              ),
+            ),
+          );
           return;
         }
         Navigator.pushAndRemoveUntil(

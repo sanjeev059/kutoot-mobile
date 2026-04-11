@@ -1,19 +1,30 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/api_data_service.dart';
+import '../../services/location_bootstrap_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/payment_nudge_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/campaign_preview_sheet.dart';
+import '../../widgets/campaign_promo_strip.dart';
+import '../../widgets/payment_nudge_banner.dart';
 import '../../widgets/premium_widgets.dart';
 import '../auth/login_screen.dart';
 import '../campaigns/campaigns_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../profile/profile_hub_screen.dart';
 import '../../widgets/kutoot_bottom_nav.dart';
 import '../qr/qr_scan_screen.dart';
 import '../stores/store_profile_screen.dart';
 import '../payment/pay_bill_screen.dart';
 import '../../utils/maps_launch.dart';
+import '../../utils/category_icon_assets.dart';
+import '../../utils/store_proximity_rank.dart';
+import '../../widgets/home_zomato_feed.dart';
 
 void _openPayBill(BuildContext context, Map<String, dynamic> store) {
   Navigator.push(
@@ -31,8 +42,7 @@ Future<void> _openStoreDirections(
   if (!ok) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text(
-            'Could not open Maps. Install Google Maps or try again.'),
+        content: Text('Could not open Maps. Install Google Maps or try again.'),
       ),
     );
   }
@@ -130,32 +140,6 @@ Color _storeTagForegroundColor(String tag) {
   }
 }
 
-IconData _iconForCategoryName(String rawName) {
-  final n = rawName.trim().toLowerCase();
-  if (n.isEmpty || n == 'all') {
-    return Icons.grid_view_rounded;
-  }
-  if (n.contains('food') || n.contains('restaurant')) {
-    return Icons.restaurant_rounded;
-  }
-  if (n.contains('shopping') || n.contains('retail')) {
-    return Icons.shopping_bag_rounded;
-  }
-  if (n.contains('health') || n.contains('wellness') || n.contains('beauty')) {
-    return Icons.spa_rounded;
-  }
-  if (n.contains('electronics') || n.contains('tech')) {
-    return Icons.devices_rounded;
-  }
-  if (n.contains('entertainment')) {
-    return Icons.movie_rounded;
-  }
-  if (n.contains('service')) {
-    return Icons.build_rounded;
-  }
-  return Icons.storefront_rounded;
-}
-
 bool _storeMatchesSearch(Map<String, dynamic> s, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return true;
@@ -164,6 +148,15 @@ bool _storeMatchesSearch(Map<String, dynamic> s, String query) {
       hay(s['branch_name']).contains(q) ||
       hay(s['city']).contains(q) ||
       hay(s['address']).contains(q);
+}
+
+/// Single display character for Zomato-style profile chip (first grapheme of name).
+String? _homeProfileInitial(Map<String, dynamic>? user) {
+  if (user == null) return null;
+  final n = user['name']?.toString().trim() ?? '';
+  if (n.isEmpty) return null;
+  final ch = String.fromCharCodes(n.runes.take(1));
+  return ch.toUpperCase();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -186,6 +179,9 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
   List<Map<String, dynamic>> _campaigns = [];
   bool _loading = true;
   Timer? _refreshTimer;
+  Timer? _proximityTimer;
+  Timer? _paymentNudgeTimer;
+  Position? _userPosition;
 
   @override
   void initState() {
@@ -193,12 +189,50 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
     _fetchData();
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
+    _refreshUserPosition();
+    _proximityTimer = Timer.periodic(
+        const Duration(minutes: 2), (_) => _refreshUserPosition());
+    _paymentNudgeTimer = Timer.periodic(
+        const Duration(minutes: 25), (_) => _tryPaymentNudgeSnack());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(seconds: 12), () {
+        if (mounted) _tryPaymentNudgeSnack();
+      });
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _proximityTimer?.cancel();
+    _paymentNudgeTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _refreshUserPosition() async {
+    final p = await LocationBootstrapService.getQuickPosition();
+    if (mounted) setState(() => _userPosition = p);
+  }
+
+  Future<void> _tryPaymentNudgeSnack() async {
+    final msg = await PaymentNudgeService.nextSnackMessageIfDue();
+    if (!mounted || msg == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Scan',
+          onPressed: () {
+            Navigator.push<void>(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const QrScanScreen()),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchData() async {
@@ -216,6 +250,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
       _campaigns = results[3] as List<Map<String, dynamic>>;
       _loading = false;
     });
+    await _refreshUserPosition();
   }
 
   Future<void> _onCategoryTap(int idx) async {
@@ -226,6 +261,7 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
         categoryId: catId is int ? catId : null);
     if (!mounted) return;
     setState(() => _stores = stores);
+    await _refreshUserPosition();
   }
 
   List<Map<String, dynamic>> get _filteredStores {
@@ -241,37 +277,12 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
         child: Column(
           children: [
             _HomeTopBar(
-              left: InkWell(
+              showBrandMark: true,
+              left: _HomeLocationBlock(
+                title: widget.cityName,
+                subtitle: 'Sign in to personalize · All partner stores',
+                leadingIcon: Icons.location_on_outlined,
                 onTap: _openLogin,
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: context.kutootCardSurface,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outline
-                            .withOpacity(0.25)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.account_circle_outlined,
-                          size: 11, color: context.kutootOnSurface),
-                      const SizedBox(width: 2),
-                      Text('LOGIN',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 7.5,
-                              height: 1.05,
-                              letterSpacing: 0.2,
-                              color: context.kutootOnSurface)),
-                    ],
-                  ),
-                ),
               ),
             ),
             Expanded(
@@ -284,8 +295,9 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
                       categories: _categories,
                       onCategoryTap: _onCategoryTap,
                       stores: _filteredStores,
-                      bannerUrls: _bannerUrls,
+                      userPosition: _userPosition,
                       campaigns: _campaigns,
+                      bannerUrls: _bannerUrls,
                       onSearchChanged: (q) => setState(() => _searchQuery = q),
                       onRefresh: _fetchData,
                       onOpenLive: () => Navigator.push(
@@ -329,7 +341,14 @@ class _GuestHomeScreenState extends State<GuestHomeScreen> {
 
   void _openLogin() {
     Navigator.push(
-        context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => LoginScreen(
+          cityName: widget.cityName,
+          onBrowseWithoutSignIn: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 }
 
@@ -353,6 +372,9 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
   List<Map<String, dynamic>> _campaigns = [];
   bool _loading = true;
   Timer? _refreshTimer;
+  Timer? _proximityTimer;
+  Timer? _paymentNudgeTimer;
+  Position? _userPosition;
   final _notifService = NotificationService();
   int _unreadCount = 0;
 
@@ -364,13 +386,51 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
         Timer.periodic(const Duration(seconds: 60), (_) => _fetchData());
     _notifService.startPolling();
     _notifService.addListener(_onNotifUpdate);
+    _refreshUserPosition();
+    _proximityTimer = Timer.periodic(
+        const Duration(minutes: 2), (_) => _refreshUserPosition());
+    _paymentNudgeTimer = Timer.periodic(
+        const Duration(minutes: 25), (_) => _tryPaymentNudgeSnack());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(seconds: 12), () {
+        if (mounted) _tryPaymentNudgeSnack();
+      });
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _proximityTimer?.cancel();
+    _paymentNudgeTimer?.cancel();
     _notifService.removeListener(_onNotifUpdate);
     super.dispose();
+  }
+
+  Future<void> _refreshUserPosition() async {
+    final p = await LocationBootstrapService.getQuickPosition();
+    if (mounted) setState(() => _userPosition = p);
+  }
+
+  Future<void> _tryPaymentNudgeSnack() async {
+    final msg = await PaymentNudgeService.nextSnackMessageIfDue();
+    if (!mounted || msg == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Scan',
+          onPressed: () {
+            Navigator.push<void>(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const QrScanScreen()),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void _onNotifUpdate() {
@@ -392,6 +452,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
       _campaigns = results[3] as List<Map<String, dynamic>>;
       _loading = false;
     });
+    await _refreshUserPosition();
   }
 
   Future<void> _onCategoryTap(int idx) async {
@@ -402,6 +463,7 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
         categoryId: catId is int ? catId : null);
     if (!mounted) return;
     setState(() => _stores = stores);
+    await _refreshUserPosition();
   }
 
   List<Map<String, dynamic>> get _filteredStores {
@@ -411,64 +473,36 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final profileInitial =
+        _homeProfileInitial(context.watch<AuthProvider>().user);
     return Scaffold(
       backgroundColor: context.kutootPageBg,
       body: SafeArea(
         child: Column(
           children: [
             _HomeTopBar(
-              left: InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Location settings coming soon')),
-                  );
+              left: _HomeLocationBlock(
+                title: widget.cityName,
+                subtitle: 'Partner stores, offers & reward campaigns',
+                leadingIcon: Icons.location_on_rounded,
+                onTap: () async {
+                  await Geolocator.openLocationSettings();
                 },
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: dark
-                        ? const Color(0xFF2C2C2E)
-                        : AppTheme.secondary.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: dark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : AppTheme.secondary.withOpacity(0.20),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.location_on,
-                          size: 15,
-                          color: dark
-                              ? const Color(0xFFFF7A2E)
-                              : AppTheme.secondary),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${widget.cityName} ▾',
-                        style: TextStyle(
-                          color: dark
-                              ? const Color(0xFFFFE0D5)
-                              : AppTheme.secondary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
               notificationCount: _unreadCount,
               onNotificationTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen()),
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               ),
+              onProfileTap: () {
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ProfileHubScreen(cityName: widget.cityName),
+                  ),
+                );
+              },
+              profileInitial: profileInitial,
             ),
             Expanded(
               child: _loading
@@ -480,8 +514,9 @@ class _LoggedInHomeScreenState extends State<LoggedInHomeScreen> {
                       categories: _categories,
                       onCategoryTap: _onCategoryTap,
                       stores: _filteredStores,
-                      bannerUrls: _bannerUrls,
+                      userPosition: _userPosition,
                       campaigns: _campaigns,
+                      bannerUrls: _bannerUrls,
                       onSearchChanged: (q) => setState(() => _searchQuery = q),
                       onRefresh: _fetchData,
                       onOpenLive: () => Navigator.push(
@@ -634,7 +669,6 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
   Widget build(BuildContext context) {
     final filtered = List<Map<String, dynamic>>.from(_filteredStores);
     _applySort(filtered);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: context.kutootPageBg,
       body: SafeArea(
@@ -642,49 +676,21 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
           children: [
             _HomeTopBar(
               left: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: context.kutootOnSurface),
+                    icon: Icon(Icons.arrow_back_rounded,
+                        color: context.kutootOnSurface),
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: dark
-                          ? const Color(0xFF2C2C2E)
-                          : AppTheme.secondary.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: dark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : AppTheme.secondary.withOpacity(0.20),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.location_on,
-                            size: 15,
-                            color: dark
-                                ? const Color(0xFFFF7A2E)
-                                : AppTheme.secondary),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${widget.cityName} ▾',
-                          style: TextStyle(
-                            color: dark
-                                ? const Color(0xFFFFE0D5)
-                                : AppTheme.secondary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                  Expanded(
+                    child: _HomeLocationBlock(
+                      title: 'All stores',
+                      subtitle: widget.cityName,
+                      leadingIcon: Icons.storefront_rounded,
+                      onTap: null,
                     ),
                   ),
                 ],
@@ -752,13 +758,33 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _SortChip(label: 'Trending', value: 'trending', selected: _sortBy == 'trending', onTap: () => setState(() => _sortBy = 'trending')),
+                                _SortChip(
+                                    label: 'Trending',
+                                    value: 'trending',
+                                    selected: _sortBy == 'trending',
+                                    onTap: () =>
+                                        setState(() => _sortBy = 'trending')),
                                 const SizedBox(width: 8),
-                                _SortChip(label: 'Nearest', value: 'nearest', selected: _sortBy == 'nearest', onTap: () => setState(() => _sortBy = 'nearest')),
+                                _SortChip(
+                                    label: 'Nearest',
+                                    value: 'nearest',
+                                    selected: _sortBy == 'nearest',
+                                    onTap: () =>
+                                        setState(() => _sortBy = 'nearest')),
                                 const SizedBox(width: 8),
-                                _SortChip(label: 'Best Value', value: 'best_value', selected: _sortBy == 'best_value', onTap: () => setState(() => _sortBy = 'best_value')),
+                                _SortChip(
+                                    label: 'Best Value',
+                                    value: 'best_value',
+                                    selected: _sortBy == 'best_value',
+                                    onTap: () =>
+                                        setState(() => _sortBy = 'best_value')),
                                 const SizedBox(width: 8),
-                                _SortChip(label: 'Popular', value: 'popular', selected: _sortBy == 'popular', onTap: () => setState(() => _sortBy = 'popular')),
+                                _SortChip(
+                                    label: 'Popular',
+                                    value: 'popular',
+                                    selected: _sortBy == 'popular',
+                                    onTap: () =>
+                                        setState(() => _sortBy = 'popular')),
                               ],
                             ),
                           ),
@@ -794,13 +820,15 @@ class _AllStoresScreenState extends State<AllStoresScreen> {
                             itemCount: filtered.length,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.62,
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 0.72,
                             ),
-                            itemBuilder: (_, i) =>
-                                _StoreCardLarge(store: filtered[i]),
+                            itemBuilder: (_, i) => _StoreCardLarge(
+                              store: filtered[i],
+                              gridCompact: true,
+                            ),
                           ),
                         ],
                       ),
@@ -829,8 +857,9 @@ class _HomeBody extends StatelessWidget {
   final List<Map<String, dynamic>> categories;
   final ValueChanged<int> onCategoryTap;
   final List<Map<String, dynamic>> stores;
-  final List<String> bannerUrls;
+  final Position? userPosition;
   final List<Map<String, dynamic>> campaigns;
+  final List<String> bannerUrls;
   final VoidCallback onOpenLive;
   final VoidCallback onOpenAnnouncements;
   final VoidCallback onSeeAll;
@@ -844,8 +873,9 @@ class _HomeBody extends StatelessWidget {
     required this.categories,
     required this.onCategoryTap,
     required this.stores,
-    required this.bannerUrls,
+    this.userPosition,
     required this.campaigns,
+    required this.bannerUrls,
     required this.onOpenLive,
     required this.onOpenAnnouncements,
     required this.onSeeAll,
@@ -856,15 +886,36 @@ class _HomeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final recommendedRanked = rankStoresForRecommendation(
+      stores,
+      userLat: userPosition?.latitude,
+      userLng: userPosition?.longitude,
+    );
     return RefreshIndicator(
       onRefresh: onRefresh ?? () async {},
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 96),
         children: [
           _SearchBar(
-              hint: 'Search stores, areas, or branches...',
-              onChanged: onSearchChanged),
+            hint: 'Search stores, areas, or branches…',
+            onChanged: onSearchChanged,
+          ),
           const SizedBox(height: 12),
+          CampaignPromoStrip(
+            campaigns: campaigns,
+            bannerUrls: bannerUrls,
+            onTap: onOpenLive,
+          ),
+          const SizedBox(height: 12),
+          PaymentNudgeBanner(
+            onScanAndPay: () {
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const QrScanScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
           Text(
             'EXPLORE CATEGORIES',
             style: TextStyle(
@@ -876,7 +927,7 @@ class _HomeBody extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 88,
+            height: 96,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
@@ -890,6 +941,7 @@ class _HomeBody extends StatelessWidget {
                     label: catName,
                     selected: selected,
                     onTap: () => onCategoryTap(i),
+                    iconAssetPath: categoryIconAssetPath(catName),
                     color: i == 1
                         ? AppTheme.primary
                         : i == 2
@@ -902,7 +954,14 @@ class _HomeBody extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
+          RecommendedForYouRow(
+            stores: recommendedRanked,
+            sortedByProximity: userPosition != null,
+          ),
+          const SizedBox(height: 20),
+          ExploreModeCouponsStrip(onViewCampaigns: onOpenLive),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -931,30 +990,32 @@ class _HomeBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          SizedBox(
-            height: 258,
-            child: stores.isEmpty
-                ? Center(
-                    child: Text('No stores found',
-                        style: TextStyle(color: context.kutootMutedText)))
-                : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: stores.length,
-                    itemBuilder: (_, i) => Padding(
-                      padding: EdgeInsets.only(
-                          right: i == stores.length - 1 ? 0 : 12),
-                      child: _StoreCardCompact(store: stores[i]),
+          stores.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'No stores found',
+                      style: TextStyle(color: context.kutootMutedText),
                     ),
                   ),
-          ),
+                )
+              : GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: stores.length > 6 ? 6 : stores.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 0.72,
+                  ),
+                  itemBuilder: (_, i) => _StoreCardLarge(
+                    store: stores[i],
+                    gridCompact: true,
+                  ),
+                ),
           const SizedBox(height: 18),
-          _CampaignCarousel(
-            campaigns: campaigns,
-            bannerUrls: bannerUrls,
-            onOpenLive: onOpenLive,
-            onCampaignTap: (c) => showCampaignPreview(context, c),
-          ),
-          const SizedBox(height: 16),
           Text(
             'TOP OFFERS TODAY',
             style: TextStyle(
@@ -1218,8 +1279,7 @@ class _HomeBody extends StatelessWidget {
                               letterSpacing: 1.0,
                               color: Color(0xFFE53935))),
                       const SizedBox(height: 2),
-                      Text(
-                          '12 people unlocked rewards today  •  5 left',
+                      Text('12 people unlocked rewards today  •  5 left',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1299,6 +1359,12 @@ class _HomeBody extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          ZomatoStyleAllStoresSection(
+            stores: recommendedRanked,
+            onSeeAll: onSeeAll,
+            maxVisible: 40,
+          ),
         ],
       ),
     );
@@ -1308,312 +1374,6 @@ class _HomeBody extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 //  REUSABLE WIDGETS
 // ═══════════════════════════════════════════════════════════════════════
-
-class _CampaignCarousel extends StatefulWidget {
-  final List<Map<String, dynamic>> campaigns;
-  final List<String> bannerUrls;
-  final VoidCallback onOpenLive;
-  final Function(Map<String, dynamic>)? onCampaignTap;
-
-  const _CampaignCarousel({
-    required this.campaigns,
-    required this.bannerUrls,
-    required this.onOpenLive,
-    this.onCampaignTap,
-  });
-
-  @override
-  State<_CampaignCarousel> createState() => _CampaignCarouselState();
-}
-
-class _CampaignCarouselState extends State<_CampaignCarousel> {
-  late final PageController _controller;
-  Timer? _autoSlide;
-  Timer? _zoomPulseTimer;
-  int _currentPage = 0;
-  bool _zoomed = false;
-
-  List<Map<String, dynamic>> get _items {
-    if (widget.campaigns.isNotEmpty) return widget.campaigns;
-    return _fallbackCampaigns;
-  }
-
-  static final _fallbackCampaigns = <Map<String, dynamic>>[
-    {
-      'title': 'LUXURY VILLA',
-      'image': '',
-      'is_active': true,
-      'gradient': [const Color(0xFF1A237E), const Color(0xFF0D47A1)],
-    },
-    {
-      'title': 'BMW M4 COMPETITION',
-      'image': '',
-      'is_active': true,
-      'gradient': [const Color(0xFF1B5E20), const Color(0xFF2E7D32)],
-    },
-    {
-      'title': 'IPHONE PRO MAX',
-      'image': '',
-      'is_active': true,
-      'gradient': [const Color(0xFF4A148C), const Color(0xFF6A1B9A)],
-    },
-    {
-      'title': '1KG GOLD BAR',
-      'image': '',
-      'is_active': true,
-      'gradient': [const Color(0xFFE65100), const Color(0xFFF57C00)],
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PageController(viewportFraction: 0.92);
-    _startAutoSlide();
-    _zoomPulseTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted) return;
-      setState(() => _zoomed = !_zoomed);
-    });
-  }
-
-  @override
-  void dispose() {
-    _autoSlide?.cancel();
-    _zoomPulseTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _startAutoSlide() {
-    _autoSlide?.cancel();
-    _autoSlide = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || _items.isEmpty) return;
-      final next = (_currentPage + 1) % _items.length;
-      _controller.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final items = _items;
-    if (items.isEmpty && widget.bannerUrls.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    if (items.isEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: SizedBox(
-          height: 200,
-          width: double.infinity,
-          child: Image.network(widget.bannerUrls[0],
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: AppTheme.primary.withOpacity(0.1))),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 200,
-      child: PageView.builder(
-            controller: _controller,
-            itemCount: items.length,
-            onPageChanged: (i) => setState(() => _currentPage = i),
-            itemBuilder: (_, i) {
-              final c = items[i];
-              final title = c['title']?.toString() ?? 'Campaign';
-              final image = c['image']?.toString() ?? '';
-              final isActive = c['is_active'] == true;
-              final gradientColors = c['gradient'] is List
-                  ? (c['gradient'] as List).cast<Color>()
-                  : <Color>[AppTheme.primary, AppTheme.primaryDark];
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: BounceTap(
-                  onTap: () {
-                    if (widget.onCampaignTap != null) {
-                      widget.onCampaignTap!(c);
-                    } else {
-                      widget.onOpenLive();
-                    }
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        AnimatedScale(
-                          scale: _zoomed ? 1.05 : 1.0,
-                          duration: const Duration(milliseconds: 1200),
-                          curve: Curves.easeInOut,
-                          alignment: Alignment.center,
-                          child: image.isNotEmpty
-                              ? Image.network(
-                                  image,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: gradientColors,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Image.asset(AppTheme.logoAsset,
-                                          height: 60,
-                                          fit: BoxFit.contain,
-                                          color: Colors.white.withOpacity(0.3)),
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: gradientColors,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Image.asset(AppTheme.logoAsset,
-                                        height: 60,
-                                        fit: BoxFit.contain,
-                                        color: Colors.white.withOpacity(0.3)),
-                                  ),
-                                ),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              stops: const [0.3, 1.0],
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.78),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? const Color(0xFF43A047)
-                                  : const Color(0xFF757575),
-                              borderRadius: BorderRadius.circular(999),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isActive)
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.only(right: 5),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                Text(
-                                  isActive ? 'LIVE' : 'COMING SOON',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 12,
-                          left: 12,
-                          child: Builder(
-                            builder: (ctx) {
-                              final d = Theme.of(ctx).brightness ==
-                                  Brightness.dark;
-                              return Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: d
-                                      ? Colors.black.withValues(alpha: 0.45)
-                                      : Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Image.asset(
-                                  AppTheme.logoAsset,
-                                  height: 24,
-                                  fit: BoxFit.contain,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: 14,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                title.toUpperCase(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.1,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Shop. Dream. Win.',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.75),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-  }
-}
 
 class _TopOfferCard extends StatelessWidget {
   final String title;
@@ -1632,8 +1392,7 @@ class _TopOfferCard extends StatelessWidget {
     this.imageUrl,
   });
 
-  bool get _hasImage =>
-      imageUrl != null && imageUrl!.trim().isNotEmpty;
+  bool get _hasImage => imageUrl != null && imageUrl!.trim().isNotEmpty;
 
   Widget _imagePlaceholder() {
     return Container(
@@ -1709,8 +1468,8 @@ class _TopOfferCard extends StatelessWidget {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: tagColor,
                         borderRadius: BorderRadius.circular(6),
@@ -1755,26 +1514,124 @@ class _TopOfferCard extends StatelessWidget {
   }
 }
 
+/// Zomato-style location row: pin + bold title + chevron + muted subtitle.
+class _HomeLocationBlock extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData leadingIcon;
+  final VoidCallback? onTap;
+
+  const _HomeLocationBlock({
+    required this.title,
+    required this.subtitle,
+    required this.leadingIcon,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final pinColor = dark ? const Color(0xFFFF7A2E) : AppTheme.secondary;
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(leadingIcon, size: 22, color: pinColor),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        height: 1.15,
+                        letterSpacing: -0.2,
+                        color: context.kutootOnSurface,
+                      ),
+                    ),
+                  ),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: context.kutootMutedText,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                  color: context.kutootMutedText,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (onTap == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: content,
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          child: content,
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeTopBar extends StatelessWidget {
   final Widget left;
-  final String? rightLabel;
-  final VoidCallback? onRightTap;
   final int notificationCount;
   final VoidCallback? onNotificationTap;
+  final VoidCallback? onProfileTap;
+  final String? profileInitial;
+  final bool showBrandMark;
 
-  const _HomeTopBar(
-      {required this.left,
-      this.rightLabel,
-      this.onRightTap,
-      this.notificationCount = 0,
-      this.onNotificationTap});
+  const _HomeTopBar({
+    required this.left,
+    this.notificationCount = 0,
+    this.onNotificationTap,
+    this.onProfileTap,
+    this.profileInitial,
+    this.showBrandMark = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
       decoration: BoxDecoration(
         color: dark
             ? context.kutootTopBarBg
@@ -1784,114 +1641,98 @@ class _HomeTopBar extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          left,
-          Expanded(
-            child: Center(
-              child: Container(
-                padding: dark ? const EdgeInsets.all(5) : EdgeInsets.zero,
-                decoration: dark
-                    ? BoxDecoration(
-                        color: const Color(0xFF2C2C2E),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                      )
-                    : null,
-                child: Container(
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: dark
-                            ? AppTheme.primary.withValues(alpha: 0.35)
-                            : const Color(0xFFFFD700).withValues(alpha: 0.3),
-                        blurRadius: dark ? 14 : 20,
-                        spreadRadius: dark ? 0 : 2,
-                      ),
-                    ],
-                  ),
-                  child: Image.asset('assets/images/k_logo.png',
-                      height: dark ? 40 : 48, fit: BoxFit.contain),
-                ),
-              ),
-            ),
-          ),
-          if (onNotificationTap != null)
+          Expanded(child: left),
+          if (showBrandMark)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: onNotificationTap,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(Icons.notifications_none_rounded,
-                        size: 26,
-                        color: context.kutootOnSurface.withOpacity(0.7)),
-                    if (notificationCount > 0)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppTheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                              minWidth: 18, minHeight: 18),
-                          child: Text(
-                            notificationCount > 9
-                                ? '9+'
-                                : '$notificationCount',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              padding: const EdgeInsets.only(right: 4),
+              child: Image.asset(
+                'assets/images/k_logo.png',
+                width: 28,
+                height: 28,
+                fit: BoxFit.contain,
               ),
             ),
-          if (rightLabel != null &&
-              rightLabel!.isNotEmpty &&
-              onRightTap != null)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InkWell(
-                  onTap: onRightTap,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primary.withOpacity(0.26),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
+          if (onNotificationTap != null) ...[
+            GestureDetector(
+              onTap: onNotificationTap,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(Icons.notifications_none_rounded,
+                      size: 26,
+                      color: context.kutootOnSurface.withOpacity(0.7)),
+                  if (notificationCount > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      rightLabel!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        letterSpacing: 1.1,
-                        fontWeight: FontWeight.w800,
+                        constraints:
+                            const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          notificationCount > 9 ? '9+' : '$notificationCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
+                ],
+              ),
+            ),
+            if (onProfileTap != null) const SizedBox(width: 10),
+          ],
+          if (onProfileTap != null)
+            Tooltip(
+              message: 'Profile',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onProfileTap,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: dark
+                          ? const Color(0xFF3A3A3C)
+                          : const Color(0xFFE8E8EA),
+                      border: Border.all(
+                        color: dark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: profileInitial != null && profileInitial!.isNotEmpty
+                        ? Text(
+                            profileInitial![0],
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              height: 1,
+                              color: context.kutootOnSurface,
+                            ),
+                          )
+                        : Icon(
+                            Icons.person_outline_rounded,
+                            size: 20,
+                            color:
+                                context.kutootOnSurface.withValues(alpha: 0.78),
+                          ),
                   ),
                 ),
-              ],
+              ),
             ),
         ],
       ),
@@ -1926,40 +1767,73 @@ class _SearchBarState extends State<_SearchBar> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final hintC =
-        dark ? const Color(0xFF8E8E93) : const Color(0x551C1C1C);
+    final hintC = dark ? const Color(0xFF8E8E93) : const Color(0xFF6B6B6B);
+    final fill = dark ? const Color(0xFF2C2C2E) : const Color(0xFFF4F4F5);
+    final borderC = dark
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.06);
+    final dividerC = dark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      constraints: const BoxConstraints(minHeight: 44, maxHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: context.kutootSearchFill,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
-        ),
+        color: fill,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderC),
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: hintC, size: 22),
-          const SizedBox(width: 10),
+          Icon(Icons.search_rounded, color: hintC, size: 18),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _controller,
               onChanged: widget.onChanged,
+              textAlignVertical: TextAlignVertical.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                height: 1.2,
+                color: context.kutootOnSurface,
+              ),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
+                contentPadding: EdgeInsets.zero,
                 hintText: widget.hint,
                 hintStyle: TextStyle(
-                    color: hintC,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500),
-              ),
-              style: TextStyle(
-                  fontSize: 15,
+                  color: hintC,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w500,
-                  color: context.kutootOnSurface),
+                ),
+              ),
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 18,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            color: dividerC,
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Voice search coming soon'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              customBorder: const CircleBorder(),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.mic_none_rounded, color: hintC, size: 20),
+              ),
             ),
           ),
         ],
@@ -2046,17 +1920,18 @@ class _CategoryBubble extends StatelessWidget {
   final bool selected;
   final Color color;
   final VoidCallback onTap;
+  final String iconAssetPath;
 
   const _CategoryBubble(
       {required this.label,
       required this.selected,
       required this.color,
-      required this.onTap});
+      required this.onTap,
+      required this.iconAssetPath});
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final icon = _iconForCategoryName(label);
     final lower = label.trim().toLowerCase();
     final iconColor =
         lower == 'all' || lower == 'home' ? AppTheme.primary : Colors.white;
@@ -2069,19 +1944,20 @@ class _CategoryBubble extends StatelessWidget {
       splashColor: AppTheme.primary.withOpacity(0.12),
       highlightColor: AppTheme.primary.withOpacity(0.06),
       child: SizedBox(
-        width: 56,
+        width: 64,
         child: Column(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
                 color: selected ? color : color.withOpacity(0.80),
                 borderRadius: BorderRadius.circular(14),
                 border: selected
                     ? Border.all(
-                        color:
-                            dark ? AppTheme.primaryContainer : const Color(0xFFFFD700),
+                        color: dark
+                            ? AppTheme.primaryContainer
+                            : const Color(0xFFFFD700),
                         width: 2)
                     : null,
                 boxShadow: [
@@ -2091,7 +1967,14 @@ class _CategoryBubble extends StatelessWidget {
                       offset: const Offset(0, 4))
                 ],
               ),
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Center(
+                child: SvgPicture.asset(
+                  iconAssetPath,
+                  width: 26,
+                  height: 26,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                ),
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -2268,7 +2151,14 @@ class _StoreCardCompact extends StatelessWidget {
 
 class _StoreCardLarge extends StatelessWidget {
   final Map<String, dynamic> store;
-  const _StoreCardLarge({required this.store});
+
+  /// 3-column “recommended” style: offer + rating on image, name, Near & fast.
+  final bool gridCompact;
+
+  const _StoreCardLarge({
+    required this.store,
+    this.gridCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2278,8 +2168,148 @@ class _StoreCardLarge extends StatelessWidget {
     final tag = _storeDisplayTag(store);
     final tagBg = _storeTagBackgroundColor(tag);
     final tagFg = _storeTagForegroundColor(tag);
-    final rating = store['rating']?.toString() ?? '4.5';
+    final rating = store['star_rating']?.toString() ??
+        store['rating']?.toString() ??
+        '4.5';
     final distance = store['distance']?.toString() ?? '';
+    final radius = gridCompact ? 12.0 : 16.0;
+
+    if (gridCompact) {
+      return InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => StoreProfileScreen(store: store)),
+        ),
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          decoration: BoxDecoration(
+            color: context.kutootCardSurface,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: dark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withOpacity(0.05),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(radius)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppTheme.primary.withOpacity(0.1),
+                          child: const Icon(Icons.store,
+                              size: 36, color: AppTheme.primary),
+                        ),
+                      ),
+                      if (tag.isNotEmpty)
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          right: 36,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: tagBg.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tag,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: tagFg,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 8,
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        left: 6,
+                        bottom: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1BA162),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  size: 11, color: Colors.white),
+                              Text(
+                                rating,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 8, 6, 2),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: context.kutootOnSurface,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 13,
+                      color: AppTheme.secondary,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        distance.isNotEmpty
+                            ? 'Near • $distance'
+                            : 'Near & fast',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: context.kutootMutedText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -2473,7 +2503,8 @@ class _QrFab extends StatelessWidget {
               color: AppTheme.primary,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 27),
+            child: const Icon(Icons.qr_code_scanner,
+                color: Colors.white, size: 27),
           ),
         ),
       ),
@@ -2553,11 +2584,22 @@ class _HomeShimmer extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       children: const [
-        ShimmerBox(width: double.infinity, height: 48, radius: 14),
+        ShimmerBox(width: double.infinity, height: 44, radius: 22),
+        SizedBox(height: 12),
+        ShimmerBox(width: double.infinity, height: 198, radius: 20),
         SizedBox(height: 16),
-        ShimmerBox(width: double.infinity, height: 200, radius: 22),
-        SizedBox(height: 20),
         ShimmerCategoryRow(),
+        SizedBox(height: 20),
+        ShimmerLine(width: 200, height: 12),
+        SizedBox(height: 12),
+        ShimmerBox(width: double.infinity, height: 210, radius: 16),
+        SizedBox(height: 20),
+        ShimmerLine(width: 120, height: 12),
+        SizedBox(height: 10),
+        ShimmerBox(width: double.infinity, height: 36, radius: 18),
+        SizedBox(height: 12),
+        ShimmerBox(width: double.infinity, height: 118, radius: 14),
+        SizedBox(height: 20),
         SizedBox(height: 20),
         ShimmerLine(width: 140),
         SizedBox(height: 12),

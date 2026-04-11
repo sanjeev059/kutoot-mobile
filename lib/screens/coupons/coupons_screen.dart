@@ -335,12 +335,12 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
 
       _razorpay.open({
         'key': key,
-        'amount': orderAmount,
+        'amount': orderAmount.toString(),
         'currency': order['currency'] ?? 'INR',
         'name': order['merchant_name'] ?? 'Kutoot',
         'description': 'Coupon Payment',
         'order_id': orderId,
-        'theme': {'color': '#FF6B35'},
+        'theme.color': '#AE1E3F',
       });
     } catch (e) {
       if (!mounted) return;

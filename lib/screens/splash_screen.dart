@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _logoController.forward();
-    Future<void>.delayed(const Duration(milliseconds: 600), () {
+    Future<void>.delayed(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       _wordmarkController.forward();
     });
@@ -72,16 +72,12 @@ class _SplashScreenState extends State<SplashScreen>
         }
       };
 
-      // Run auth check and splash delay in parallel
-      await Future.wait([
-        auth.checkAuth(),
-        Future<void>.delayed(const Duration(milliseconds: 3500)),
-      ]);
+      // Auth + location only — avoid an extra long blank wait before branded splash
+      await auth.checkAuth();
       if (!mounted) return;
 
       // Step 1: Request APP permission (shows "Allow while using app" dialog)
-      final permission =
-          await LocationBootstrapService.requestAppPermission();
+      final permission = await LocationBootstrapService.requestAppPermission();
       if (!mounted) return;
 
       // Step 2: If permission granted, ensure GPS is turned on
@@ -95,8 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
       }
 
       // Step 3: Fetch actual location (will use GPS if available, else fallback)
-      final city =
-          await LocationBootstrapService.ensureFirstLaunchLocation();
+      final city = await LocationBootstrapService.ensureFirstLaunchLocation();
       if (!mounted) return;
 
       NotificationService().setCityName(city);
@@ -157,8 +152,7 @@ class _SplashScreenState extends State<SplashScreen>
                             shape: BoxShape.circle,
                             gradient: RadialGradient(
                               colors: [
-                                const Color(0xFFFFD700)
-                                    .withValues(alpha: 0.3),
+                                const Color(0xFFFFD700).withValues(alpha: 0.3),
                                 Colors.transparent,
                               ],
                             ),
@@ -187,8 +181,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ],
                           ),
-                          child:
-                              Image.asset(_logoAsset, fit: BoxFit.contain),
+                          child: Image.asset(_logoAsset, fit: BoxFit.contain),
                         ),
                       ],
                     ),
