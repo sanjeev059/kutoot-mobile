@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// Launch India UPI apps with a payee + amount (NPCI-style query params).
 /// Falls back through several URI schemes so the right app opens when installed.
 Future<bool> launchUpiForApp({
-  required _UpiAppTarget app,
+  required UpiAppTarget app,
   required String payeeVpa,
   required String payeeName,
   required String amountRupees,
@@ -22,24 +22,24 @@ Future<bool> launchUpiForApp({
       'pa=${Uri.encodeComponent(payeeVpa)}&pn=$pn&am=$am&cu=INR&tn=$tn$tr';
 
   final candidates = switch (app) {
-    _UpiAppTarget.phonepe => [
+    UpiAppTarget.phonepe => [
         'phonepe://pay?$base',
         'upi://pay?$base',
       ],
-    _UpiAppTarget.paytm => [
+    UpiAppTarget.paytm => [
         'paytmmp://pay?$base',
         'upi://pay?$base',
       ],
-    _UpiAppTarget.googlePay => [
+    UpiAppTarget.googlePay => [
         'tez://upi/pay?$base',
         'gpay://upi/pay?$base',
         'upi://pay?$base',
       ],
-    _UpiAppTarget.bhim => [
+    UpiAppTarget.bhim => [
         'bhim://pay?$base',
         'upi://pay?$base',
       ],
-    _UpiAppTarget.any => ['upi://pay?$base'],
+    UpiAppTarget.any => ['upi://pay?$base'],
   };
 
   for (final raw in candidates) {
@@ -57,7 +57,37 @@ Future<bool> launchUpiForApp({
   return false;
 }
 
-enum _UpiAppTarget { phonepe, paytm, googlePay, bhim, any }
+enum UpiAppTarget { phonepe, paytm, googlePay, bhim, any }
+
+UpiAppTarget _upiTargetFromPackage(String packageName) {
+  final p = packageName.toLowerCase();
+  if (p == 'any') return UpiAppTarget.any;
+  if (p.contains('phonepe')) return UpiAppTarget.phonepe;
+  if (p.contains('paytm')) return UpiAppTarget.paytm;
+  if (p.contains('nbu.paisa') || p.contains('gpay')) {
+    return UpiAppTarget.googlePay;
+  }
+  if (p.contains('npci') || p.contains('bhim')) return UpiAppTarget.bhim;
+  return UpiAppTarget.any;
+}
+
+/// Launch using detected app package id (maps to PhonePe / GPay / Paytm / BHIM / chooser).
+Future<bool> launchUpiForAndroidPackage({
+  required String packageName,
+  required String payeeVpa,
+  required String payeeName,
+  required String amountRupees,
+  String transactionNote = 'Kutoot bill',
+  String? transactionRef,
+}) =>
+    launchUpiForApp(
+      app: _upiTargetFromPackage(packageName),
+      payeeVpa: payeeVpa,
+      payeeName: payeeName,
+      amountRupees: amountRupees,
+      transactionNote: transactionNote,
+      transactionRef: transactionRef,
+    );
 
 Future<bool> launchPhonePeUpi({
   required String payeeVpa,
@@ -66,7 +96,7 @@ Future<bool> launchPhonePeUpi({
   String? transactionRef,
 }) =>
     launchUpiForApp(
-      app: _UpiAppTarget.phonepe,
+      app: UpiAppTarget.phonepe,
       payeeVpa: payeeVpa,
       payeeName: payeeName,
       amountRupees: amountRupees,
@@ -80,7 +110,7 @@ Future<bool> launchPaytmUpi({
   String? transactionRef,
 }) =>
     launchUpiForApp(
-      app: _UpiAppTarget.paytm,
+      app: UpiAppTarget.paytm,
       payeeVpa: payeeVpa,
       payeeName: payeeName,
       amountRupees: amountRupees,
@@ -94,7 +124,7 @@ Future<bool> launchGooglePayUpi({
   String? transactionRef,
 }) =>
     launchUpiForApp(
-      app: _UpiAppTarget.googlePay,
+      app: UpiAppTarget.googlePay,
       payeeVpa: payeeVpa,
       payeeName: payeeName,
       amountRupees: amountRupees,
@@ -108,7 +138,7 @@ Future<bool> launchBhimUpi({
   String? transactionRef,
 }) =>
     launchUpiForApp(
-      app: _UpiAppTarget.bhim,
+      app: UpiAppTarget.bhim,
       payeeVpa: payeeVpa,
       payeeName: payeeName,
       amountRupees: amountRupees,
@@ -122,7 +152,7 @@ Future<bool> launchGenericUpiChooser({
   String? transactionRef,
 }) =>
     launchUpiForApp(
-      app: _UpiAppTarget.any,
+      app: UpiAppTarget.any,
       payeeVpa: payeeVpa,
       payeeName: payeeName,
       amountRupees: amountRupees,

@@ -3,7 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/env.dart';
 import '../services/device_service.dart';
 
-/// Kutoot API client — production endpoints under /api/mobile
+/// Kutoot API client — mostly `/api/mobile`; payments use `/api/v1` (same as web).
 class KutootApi {
   static final KutootApi _instance = KutootApi._();
   factory KutootApi() => _instance;
@@ -12,6 +12,7 @@ class KutootApi {
   static void Function()? onSessionExpired;
 
   late final Dio _dio;
+  late final Dio _dioV1;
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: false),
   );
@@ -27,8 +28,13 @@ class KutootApi {
   }
 
   KutootApi._() {
-    _dio = Dio(BaseOptions(
-      baseUrl: Env.apiBaseUrl,
+    _dio = _createDio(Env.apiBaseUrl);
+    _dioV1 = _createDio(Env.apiV1BaseUrl);
+  }
+
+  Dio _createDio(String baseUrl) {
+    final dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
       headers: {
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
@@ -37,7 +43,7 @@ class KutootApi {
       receiveTimeout: const Duration(seconds: 30),
     ));
 
-    _dio.interceptors.add(InterceptorsWrapper(
+    dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         try {
           final token = await _storage.read(key: 'auth_token');
@@ -46,7 +52,6 @@ class KutootApi {
           }
         } catch (_) {}
 
-        // Attach device fingerprint to every request
         try {
           final deviceHeaders = await DeviceService().getDeviceHeaders();
           options.headers.addAll(deviceHeaders);
@@ -67,6 +72,7 @@ class KutootApi {
         return handler.next(err);
       },
     ));
+    return dio;
   }
 
   Future<void> setToken(String token) async {
@@ -195,9 +201,10 @@ class KutootApi {
 
   Future<Response> getCoupon(int id) => _dio.get('/coupons/$id');
 
+  /// Same as web `kutootApi.coupons.redeem` (v1).
   Future<Response> redeemCoupon(int couponId,
           [Map<String, dynamic>? data]) =>
-      _dio.post('/coupons/$couponId/redeem', data: data);
+      _dioV1.post('/coupons/$couponId/redeem', data: data);
 
   Future<Response> getMyCoupons({Map<String, dynamic>? params}) =>
       _dio.get('/my-coupons', queryParameters: params);
@@ -295,12 +302,12 @@ class KutootApi {
   Future<Response> applyReferralCode(String code) =>
       _dio.post('/referral/apply', data: {'referral_code': code});
 
-  // ─── Payments ─────────────────────────────────────────────────────
+  // ─── Payments (v1 — same as web kutootApi.coupons) ─────────────────
   Future<Response> payWithoutCoupon(Map<String, dynamic> data) =>
-      _dio.post('/payments/pay', data: data);
+      _dioV1.post('/coupons/pay-without-coupon', data: data);
 
   Future<Response> verifyPayment(Map<String, dynamic> data) =>
-      _dio.post('/payments/verify', data: data);
+      _dioV1.post('/coupons/verify-payment', data: data);
 
   // ─── QR Scan ──────────────────────────────────────────────────────
   Future<Response> scanQr(String qrCode) =>

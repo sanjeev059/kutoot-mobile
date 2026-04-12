@@ -1,7 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/razorpay_native_android.dart';
+import '../../services/razorpay_order_checkout.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/zomato_payment_bottom_sheet.dart';
+import '../payment/upi_app_select_screen.dart';
 
 class CouponsScreen extends StatefulWidget {
   const CouponsScreen({super.key});
@@ -333,21 +340,129 @@ class _CouponDetailScreenState extends State<CouponDetailScreen> {
         throw Exception('Invalid payment order returned by server');
       }
 
-      _razorpay.open({
-        'key': key,
-        'amount': orderAmount.toString(),
-        'currency': order['currency'] ?? 'INR',
-        'name': order['merchant_name'] ?? 'Kutoot',
-        'description': 'Coupon Payment',
-        'order_id': orderId,
-        'theme.color': '#AE1E3F',
-      });
+      if (!mounted) return;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final choice = await showZomatoPaymentBottomSheet(
+          context,
+          amountInRupees: orderAmount / 100.0,
+        );
+        if (!mounted) return;
+        if (choice == null) {
+          setState(() => _paying = false);
+          return;
+        }
+        if (choice == kutootRazorpayFullCheckout) {
+          await _openCouponRazorpay(
+            key: key,
+            orderId: orderId,
+            orderAmountPaise: orderAmount,
+            order: Map<dynamic, dynamic>.from(order),
+          );
+        } else {
+          await _openCouponRazorpayUpiIntent(
+            key: key,
+            orderId: orderId,
+            orderAmountPaise: orderAmount,
+            order: Map<dynamic, dynamic>.from(order),
+            upiAppPackage: choice,
+          );
+        }
+      } else {
+        await _openCouponRazorpay(
+          key: key,
+          orderId: orderId,
+          orderAmountPaise: orderAmount,
+          order: Map<dynamic, dynamic>.from(order),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _paying = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Payment init failed: $e')),
       );
+    }
+  }
+
+  Future<void> _openCouponRazorpay({
+    required String key,
+    required String orderId,
+    required int orderAmountPaise,
+    required Map<dynamic, dynamic> order,
+  }) async {
+    if (!mounted) return;
+    setState(() => _paying = true);
+    final user = context.read<AuthProvider>().user;
+    var contact10 = resolveRazorpayContactFromUser(
+      user != null ? Map<String, dynamic>.from(user) : null,
+    );
+    contact10 ??= await AuthProvider.loadLastLoginMobileDigits();
+    final email = user?['email']?.toString();
+
+    final options = buildRazorpayOrderCheckoutOptions(
+      key: key,
+      orderId: orderId,
+      orderAmountPaise: orderAmountPaise,
+      order: order,
+      description: 'Coupon Payment',
+      themeColor: '#AE1E3F',
+      prefillContact10: contact10,
+      prefillEmail: email,
+    );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await RazorpayNativeAndroid.open(options);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _paying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open payment: $e')),
+        );
+      }
+    } else {
+      _razorpay.open(options);
+    }
+  }
+
+  Future<void> _openCouponRazorpayUpiIntent({
+    required String key,
+    required String orderId,
+    required int orderAmountPaise,
+    required Map<dynamic, dynamic> order,
+    required String upiAppPackage,
+  }) async {
+    if (!mounted) return;
+    setState(() => _paying = true);
+    final user = context.read<AuthProvider>().user;
+    var contact10 = resolveRazorpayContactFromUser(
+      user != null ? Map<String, dynamic>.from(user) : null,
+    );
+    contact10 ??= await AuthProvider.loadLastLoginMobileDigits();
+    final email = user?['email']?.toString();
+
+    final options = buildRazorpayUpiIntentOnlyOptions(
+      key: key,
+      orderId: orderId,
+      orderAmountPaise: orderAmountPaise,
+      order: order,
+      description: 'Coupon Payment',
+      themeColor: '#AE1E3F',
+      prefillContact10: contact10,
+      prefillEmail: email,
+      upiAppPackage: upiAppPackage,
+    );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await RazorpayNativeAndroid.open(options);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _paying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open payment: $e')),
+        );
+      }
+    } else {
+      _razorpay.open(options);
     }
   }
 

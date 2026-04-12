@@ -1,12 +1,22 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
+import '../../data/payment_repository.dart';
+import '../../domain/payment_manager.dart';
+import '../../domain/payment_models.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/campaign_entry_service.dart';
 import '../../services/razorpay_native_android.dart';
+import '../../services/razorpay_order_checkout.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/api_error_message.dart';
 import '../../utils/image_utils.dart';
+import '../auth/login_screen.dart';
+import 'payment_result_screens.dart';
+import 'upi_app_select_screen.dart';
+import '../../widgets/zomato_payment_bottom_sheet.dart';
 
 class PayBillScreen extends StatefulWidget {
   final Map<String, dynamic> merchantLocation;
@@ -24,6 +34,8 @@ class PayBillScreen extends StatefulWidget {
 
 class _PayBillScreenState extends State<PayBillScreen> {
   final _api = KutootApi();
+  late final PaymentManager _paymentManager =
+      PaymentManager(PaymentRepository(_api));
   final _amountController = TextEditingController();
   final _dealsScrollController = ScrollController();
   late final Razorpay _razorpay;
@@ -35,6 +47,12 @@ class _PayBillScreenState extends State<PayBillScreen> {
   int? _transactionId;
   String? _selectedCouponCode;
   bool _addDonation = true;
+
+  /// Last Razorpay order (for retry / change method after failure).
+  String? _pendingRzpKey;
+  String? _pendingOrderId;
+  int _pendingOrderAmount = 0;
+  Map<dynamic, dynamic>? _pendingOrderMap;
 
   @override
   void initState() {
@@ -99,179 +117,176 @@ class _PayBillScreenState extends State<PayBillScreen> {
     return 2;
   }
 
-  /// [upiAppPackage] null = full checkout ("More options"). On Android when set,
-  /// checkout is **UPI-only** with **intent** enabled and **collect** disabled so
-  /// Razorpay opens PSP apps instead of the @VPA form (see Razorpay Android
-  /// `method.upi.intent` / `method.upi.collect` docs and sample-app issues).
+  Future<String?> _razorpayContact10() async {
+    final user = context.read<AuthProvider>().user;
+    var contact10 = resolveRazorpayContactFromUser(
+      user != null ? Map<String, dynamic>.from(user) : null,
+    );
+    contact10 ??= await AuthProvider.loadLastLoginMobileDigits();
+    return contact10;
+  }
+
   Future<void> _openRazorpayCheckout(
     String key,
     String orderId,
     int orderAmount,
-    Map<dynamic, dynamic> order, {
-    String? upiAppPackage,
-  }) async {
+    Map<dynamic, dynamic> order,
+  ) async {
     if (!mounted) return;
     setState(() => _paying = true);
-    // Android SDK expects amount in sub-units (paise) as a string in many samples.
-    final amountStr = orderAmount.toString();
-    final options = <String, dynamic>{
-      'key': key,
-      'amount': amountStr,
-      'currency': order['currency'] ?? 'INR',
-      'name': order['merchant_name'] ?? 'Kutoot',
-      'description': 'Bill Payment',
-      'order_id': orderId,
-      // Dotted keys match Razorpay Android JSON samples (avoids nested-map quirks).
-      'theme.color': '#E23744',
-    };
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      options['webview_intent'] = true;
-    }
-    if (upiAppPackage != null &&
-        !kIsWeb &&
-        defaultTargetPlatform == TargetPlatform.android) {
-      // Prefer intent; disable collect (manual @UPI) per Razorpay support (#217 inverse).
-      options['method'] = <String, dynamic>{
-        'upi': <String, dynamic>{
-          'intent': true,
-          'collect': false,
-        },
-        'card': false,
-        'netbanking': false,
-        'wallet': false,
-      };
-      options['_[flow]'] = 'intent';
-      options['display_logo'] = false;
-      if (upiAppPackage.isNotEmpty) {
-        options['upi_app_package_name'] = upiAppPackage;
-      }
-    }
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        await RazorpayNativeAndroid.open(options);
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _paying = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open payment: $e')),
-        );
-      }
-    } else {
-      _razorpay.open(options);
+    final contact10 = await _razorpayContact10();
+    if (!mounted) return;
+    final email = context.read<AuthProvider>().user?['email']?.toString();
+    final ctx = RazorpayOrderContext(
+      key: key,
+      orderId: orderId,
+      amountPaise: orderAmount,
+      order: order,
+    );
+    try {
+      await _paymentManager.openRazorpayHosted(
+        flutterPlugin: _razorpay,
+        ctx: ctx,
+        description: 'Bill Payment',
+        themeColor: '#E23744',
+        prefillContact10: contact10,
+        prefillEmail: email,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _paying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open payment: $e')),
+      );
     }
   }
 
-  /// Zomato-style UPI grid: each option opens Razorpay so the order is paid and
-  /// verify + stamps work (raw `upi://` would skip Razorpay and leave txn pending).
-  Future<void> _showUpiAppPicker({
-    required double amountInRupees,
-    required Future<void> Function({String? upiAppPackage}) openRazorpayCheckout,
+  Future<void> _openRazorpayUpiIntentCheckout(
+    String key,
+    String orderId,
+    int orderAmount,
+    Map<dynamic, dynamic> order,
+    String upiAppPackage,
+  ) async {
+    if (!mounted) return;
+    setState(() => _paying = true);
+    final contact10 = await _razorpayContact10();
+    if (!mounted) return;
+    final email = context.read<AuthProvider>().user?['email']?.toString();
+    final ctx = RazorpayOrderContext(
+      key: key,
+      orderId: orderId,
+      amountPaise: orderAmount,
+      order: order,
+    );
+    try {
+      await _paymentManager.tryDirectUpiOrRazorpay(
+        flutterPlugin: _razorpay,
+        ctx: ctx,
+        upiAppPackage: upiAppPackage,
+        amountRupees: orderAmount / 100.0,
+        description: 'Bill Payment',
+        themeColor: '#E23744',
+        prefillContact10: contact10,
+        prefillEmail: email,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _paying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open payment: $e')),
+      );
+    }
+  }
+
+  /// Android: **our** bottom sheet first (installed UPI apps + Razorpay for cards).
+  /// Then UPI intent → PhonePe/GPay/etc. **Never** open full Razorpay before the user
+  /// picks an app — Razorpay’s hosted “Payment Options” + UPI row leads to **UPI ID**
+  /// (collect) instead of launching the PSP.
+  Future<void> _presentPaymentMethodAndCheckout({
+    required String key,
+    required String orderId,
+    required int orderAmount,
+    required Map<dynamic, dynamic> order,
+    required double amountRupees,
   }) async {
-    final amt = amountInRupees.toStringAsFixed(2);
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        void pickUpiOnAndroid(String package) {
-          Navigator.pop(ctx);
-          if (!kIsWeb &&
-              defaultTargetPlatform == TargetPlatform.android) {
-            openRazorpayCheckout(upiAppPackage: package);
-          } else {
-            openRazorpayCheckout();
-          }
-        }
-
-        Widget appTile(String label, VoidCallback onTap) {
-          return SizedBox(
-            width: MediaQuery.sizeOf(ctx).width / 2 - 28,
-            child: OutlinedButton(
-              onPressed: onTap,
-              child: Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          );
-        }
-
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.paddingOf(ctx).bottom + 16,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Pay ₹$amt',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Choose a UPI app',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Opens your UPI app with the correct amount (no manual @UPI typing). '
-                'PhonePe needs a bank-linked UPI account for app-open to work. '
-                'Stamps update after payment completes.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textSecondary.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  appTile('PhonePe',
-                      () => pickUpiOnAndroid('com.phonepe.app')),
-                  appTile('Paytm', () => pickUpiOnAndroid('net.one97.paytm')),
-                  appTile(
-                      'Google Pay',
-                      () => pickUpiOnAndroid(
-                          'com.google.android.apps.nbu.paisa.user')),
-                  appTile('BHIM UPI',
-                      () => pickUpiOnAndroid('in.org.npci.upiapp')),
-                  appTile('Other UPI', () => pickUpiOnAndroid('')),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  openRazorpayCheckout();
-                },
-                child: const Text(
-                  'More options (card / netbanking / wallets)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final choice = await showZomatoPaymentBottomSheet(
+        context,
+        amountInRupees: amountRupees,
+      );
+      if (!mounted) return;
+      if (choice == null) {
+        setState(() => _paying = false);
+        _pendingRzpKey = null;
+        _pendingOrderId = null;
+        _pendingOrderMap = null;
+        return;
+      }
+      if (choice == kutootRazorpayFullCheckout) {
+        await _openRazorpayCheckout(key, orderId, orderAmount, order);
+      } else {
+        await _openRazorpayUpiIntentCheckout(
+          key,
+          orderId,
+          orderAmount,
+          order,
+          choice,
         );
-      },
+      }
+      return;
+    }
+    await _openRazorpayCheckout(key, orderId, orderAmount, order);
+  }
+
+  /// After a failed/cancelled attempt: show sheet (other UPI apps, cards, full Razorpay).
+  Future<void> _presentPaymentMethodSheetOnly({
+    required String key,
+    required String orderId,
+    required int orderAmount,
+    required Map<dynamic, dynamic> order,
+    required double amountRupees,
+  }) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final choice = await showZomatoPaymentBottomSheet(
+        context,
+        amountInRupees: amountRupees,
+      );
+      if (!mounted) return;
+      if (choice == null) {
+        setState(() => _paying = false);
+        _pendingRzpKey = null;
+        _pendingOrderId = null;
+        _pendingOrderMap = null;
+        return;
+      }
+      if (choice == kutootRazorpayFullCheckout) {
+        await _openRazorpayCheckout(key, orderId, orderAmount, order);
+      } else {
+        await _openRazorpayUpiIntentCheckout(
+          key,
+          orderId,
+          orderAmount,
+          order,
+          choice,
+        );
+      }
+    } else {
+      await _openRazorpayCheckout(key, orderId, orderAmount, order);
+    }
+  }
+
+  Future<void> _resumePaymentAfterFailure() async {
+    final key = _pendingRzpKey;
+    final oid = _pendingOrderId;
+    final order = _pendingOrderMap;
+    if (key == null || oid == null || order == null) return;
+    await _presentPaymentMethodSheetOnly(
+      key: key,
+      orderId: oid,
+      orderAmount: _pendingOrderAmount,
+      order: order,
+      amountRupees: _calculateBreakdown().payable,
     );
   }
 
@@ -419,6 +434,29 @@ class _PayBillScreenState extends State<PayBillScreen> {
       return;
     }
 
+    if (!context.read<AuthProvider>().isLoggedIn) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sign in with your mobile number to pay. Use the OTP we send you.',
+          ),
+        ),
+      );
+      final city = widget.merchantLocation['city']?.toString() ??
+          widget.merchantLocation['city_name']?.toString();
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => LoginScreen(
+            cityName: city,
+            onBrowseWithoutSignIn: () => Navigator.pop(context),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _paying = true);
     try {
       final payload = <String, dynamic>{
@@ -472,45 +510,28 @@ class _PayBillScreenState extends State<PayBillScreen> {
         return;
       }
 
-      final order = result['order'] is Map ? result['order'] as Map : {};
-      final key = order['key']?.toString();
-      final orderId = order['id']?.toString();
-      final orderAmount = order['amount'] is int
-          ? order['amount'] as int
-          : int.tryParse('${order['amount']}') ?? 0;
-      if (key == null ||
-          key.isEmpty ||
-          orderId == null ||
-          orderId.isEmpty ||
-          orderAmount <= 0) {
+      final ctx = PaymentRepository.parseRazorpayOrderFromPayResponse(res.data);
+      if (ctx == null) {
         throw Exception('Invalid payment order response');
       }
 
-      if (!mounted) return;
-      setState(() => _paying = false);
+      _pendingRzpKey = ctx.key;
+      _pendingOrderId = ctx.orderId;
+      _pendingOrderAmount = ctx.amountPaise;
+      _pendingOrderMap = ctx.order;
 
-      await _showUpiAppPicker(
-        amountInRupees: amount,
-        openRazorpayCheckout: ({String? upiAppPackage}) => _openRazorpayCheckout(
-              key,
-              orderId,
-              orderAmount,
-              order,
-              upiAppPackage: upiAppPackage,
-            ),
+      if (!mounted) return;
+      await _presentPaymentMethodAndCheckout(
+        key: ctx.key,
+        orderId: ctx.orderId,
+        orderAmount: ctx.amountPaise,
+        order: ctx.order,
+        amountRupees: breakdown.payable,
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _paying = false);
-      String message = 'Could not start payment. Please try again.';
-      if (e is DioException) {
-        final data = e.response?.data;
-        if (data is Map && data['message'] != null) {
-          message = data['message'].toString();
-        } else if (e.message != null && e.message!.isNotEmpty) {
-          message = e.message!;
-        }
-      }
+      final message = userFacingApiError(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -545,17 +566,34 @@ class _PayBillScreenState extends State<PayBillScreen> {
             selectedCampaign.isNotEmpty ? selectedCampaign.first : null,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Payment successful. You earned stamps and got entry in $campaignName.',
+      _pendingRzpKey = null;
+      _pendingOrderId = null;
+      _pendingOrderMap = null;
+      final branch = widget.merchantLocation['branch_name']?.toString() ??
+          widget.merchantLocation['name']?.toString() ??
+          'Store';
+      final bd = _calculateBreakdown();
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (successCtx) => PaymentSuccessScreen(
+            amountFormatted: '₹${bd.payable.toStringAsFixed(0)}',
+            paymentId: response.paymentId ?? '',
+            orderId: response.orderId ?? '',
+            storeLabel: branch,
+            subtitle:
+                'You earned stamps and got entry in $campaignName.',
+            onContinue: () {
+              Navigator.pop(successCtx);
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                if (!context.mounted) return;
+                await _showRatingDialog();
+                if (context.mounted) Navigator.pop(context, true);
+              });
+            },
           ),
         ),
       );
-      if (!mounted) return;
-      await _showRatingDialog();
-      if (!mounted) return;
-      Navigator.pop(context, true);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -572,8 +610,27 @@ class _PayBillScreenState extends State<PayBillScreen> {
   void _onPaymentError(PaymentFailureResponse response) {
     if (!mounted) return;
     setState(() => _paying = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(response.message ?? 'Payment failed')),
+    final code = response.code;
+    final raw = response.message ?? 'Payment failed';
+    final cancelled = code == 2;
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (ctx) => PaymentFailureScreen(
+          message: cancelled
+              ? 'Payment was cancelled or didn\'t complete.'
+              : raw,
+          showPendingHint: !cancelled,
+          onRetry: () {
+            Navigator.pop(ctx);
+            _resumePaymentAfterFailure();
+          },
+          onChangeMethod: () {
+            Navigator.pop(ctx);
+            _resumePaymentAfterFailure();
+          },
+        ),
+      ),
     );
   }
 
@@ -672,10 +729,15 @@ class _PayBillScreenState extends State<PayBillScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
-      appBar: AppBar(title: const Text('Pay Bill')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(
+        title: const Text('Order summary'),
+      ),
+      body: Column(
         children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -932,25 +994,82 @@ class _PayBillScreenState extends State<PayBillScreen> {
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_paying || breakdown.baseBill <= 0)
-                  ? null
-                  : _startPayment,
-              child: _paying
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text('Pay Now ₹${breakdown.payable.toStringAsFixed(0)}'),
+        ],
+      ),
+    ),
+  ],
+),
+      bottomNavigationBar: Material(
+        elevation: 16,
+        shadowColor: Colors.black26,
+        color: Colors.white,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TOTAL TO PAY',
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 1,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '₹${breakdown.payable.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton(
+                  onPressed: (_paying || breakdown.baseBill <= 0)
+                      ? null
+                      : _startPayment,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _paying
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Proceed to pay',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }

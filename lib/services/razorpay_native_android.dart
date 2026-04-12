@@ -2,6 +2,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+void _logRazorpayOptionsForDebug(Map<String, dynamic> options) {
+  if (!kDebugMode) return;
+  final flow = options['_[flow]'];
+  final pkg = options['upi_app_package_name'];
+  final method = options['method'];
+  final oid = options['order_id'];
+  final key = options['key']?.toString() ?? '';
+  final keyMasked =
+      key.length <= 8 ? '***' : '${key.substring(0, 8)}…';
+  debugPrint(
+    '[RazorpayNative] flow=$flow order_id=$oid key=$keyMasked '
+    'method=$method upi_pkg=$pkg webview_intent=${options['webview_intent']}',
+  );
+}
+
 /// Opens Razorpay via [Checkout.open] on the host [FlutterActivity] (Android only).
 /// Improves UPI **intent** vs the plugin’s CheckoutActivity/WebView collect flow.
 class RazorpayNativeAndroid {
@@ -51,6 +66,18 @@ class RazorpayNativeAndroid {
   }
 
   static Future<void> open(Map<String, dynamic> options) async {
-    await _ch.invokeMethod<void>('open', {'options': options});
+    _logRazorpayOptionsForDebug(options);
+    // Shows in logcat as `flutter` tag: `adb logcat -s flutter` (release/profile too).
+    print('[RazorpayNative] invoking native Checkout.open');
+    try {
+      await _ch.invokeMethod<void>('open', {'options': options});
+    } on PlatformException catch (e, st) {
+      debugPrint(
+        '[RazorpayNative] PlatformException ${e.code} ${e.message} '
+        'details=${e.details}',
+      );
+      debugPrint('$st');
+      rethrow;
+    }
   }
 }

@@ -1,11 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../api/kutoot_api.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/razorpay_native_android.dart';
+import '../../services/razorpay_order_checkout.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/zomato_payment_bottom_sheet.dart';
+import '../payment/upi_app_select_screen.dart';
 import '../qr/qr_scan_screen.dart';
 import 'stamp_history_screen.dart';
 
@@ -52,12 +59,22 @@ class _StampsScreenState extends State<StampsScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      RazorpayNativeAndroid.bind(
+        onSuccess: _onPaymentSuccess,
+        onError: _onPaymentError,
+        onExternalWallet: _onExternalWallet,
+      );
+    }
     _searchController.addListener(() => setState(() {}));
     _load();
   }
 
   @override
   void dispose() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      RazorpayNativeAndroid.unbind();
+    }
     _searchController.dispose();
     _razorpay.clear();
     super.dispose();
@@ -594,15 +611,45 @@ class _StampsScreenState extends State<StampsScreen> {
         throw Exception('Invalid payment order for reservation');
       }
 
-      _razorpay.open({
-        'key': key,
-        'amount': amount.toString(),
-        'currency': order['currency'] ?? 'INR',
-        'name': order['merchant_name'] ?? 'Kutoot',
-        'description': 'Stamp Reservation',
-        'order_id': orderId,
-        'theme.color': '#AE1E3F',
-      });
+      if (!mounted) return;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final choice = await showZomatoPaymentBottomSheet(
+          context,
+          amountInRupees: amount / 100.0,
+        );
+        if (!mounted) return;
+        if (choice == null) {
+          setState(() {
+            _reserving = false;
+            _pendingStampId = null;
+            _pendingPlanId = null;
+          });
+          return;
+        }
+        if (choice == kutootRazorpayFullCheckout) {
+          await _openReservationRazorpay(
+            key: key,
+            orderId: orderId,
+            orderAmountPaise: amount,
+            order: Map<dynamic, dynamic>.from(order),
+          );
+        } else {
+          await _openReservationRazorpayUpiIntent(
+            key: key,
+            orderId: orderId,
+            orderAmountPaise: amount,
+            order: Map<dynamic, dynamic>.from(order),
+            upiAppPackage: choice,
+          );
+        }
+      } else {
+        await _openReservationRazorpay(
+          key: key,
+          orderId: orderId,
+          orderAmountPaise: amount,
+          order: Map<dynamic, dynamic>.from(order),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -613,6 +660,96 @@ class _StampsScreenState extends State<StampsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Reservation failed: $e')),
       );
+    }
+  }
+
+  Future<void> _openReservationRazorpay({
+    required String key,
+    required String orderId,
+    required int orderAmountPaise,
+    required Map<dynamic, dynamic> order,
+  }) async {
+    if (!mounted) return;
+    setState(() => _reserving = true);
+    final user = context.read<AuthProvider>().user;
+    var contact10 = resolveRazorpayContactFromUser(
+      user != null ? Map<String, dynamic>.from(user) : null,
+    );
+    contact10 ??= await AuthProvider.loadLastLoginMobileDigits();
+    final email = user?['email']?.toString();
+
+    final options = buildRazorpayOrderCheckoutOptions(
+      key: key,
+      orderId: orderId,
+      orderAmountPaise: orderAmountPaise,
+      order: order,
+      description: 'Stamp Reservation',
+      themeColor: '#AE1E3F',
+      prefillContact10: contact10,
+      prefillEmail: email,
+    );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await RazorpayNativeAndroid.open(options);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _reserving = false;
+          _pendingStampId = null;
+          _pendingPlanId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open payment: $e')),
+        );
+      }
+    } else {
+      _razorpay.open(options);
+    }
+  }
+
+  Future<void> _openReservationRazorpayUpiIntent({
+    required String key,
+    required String orderId,
+    required int orderAmountPaise,
+    required Map<dynamic, dynamic> order,
+    required String upiAppPackage,
+  }) async {
+    if (!mounted) return;
+    setState(() => _reserving = true);
+    final user = context.read<AuthProvider>().user;
+    var contact10 = resolveRazorpayContactFromUser(
+      user != null ? Map<String, dynamic>.from(user) : null,
+    );
+    contact10 ??= await AuthProvider.loadLastLoginMobileDigits();
+    final email = user?['email']?.toString();
+
+    final options = buildRazorpayUpiIntentOnlyOptions(
+      key: key,
+      orderId: orderId,
+      orderAmountPaise: orderAmountPaise,
+      order: order,
+      description: 'Stamp Reservation',
+      themeColor: '#AE1E3F',
+      prefillContact10: contact10,
+      prefillEmail: email,
+      upiAppPackage: upiAppPackage,
+    );
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await RazorpayNativeAndroid.open(options);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _reserving = false;
+          _pendingStampId = null;
+          _pendingPlanId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open payment: $e')),
+        );
+      }
+    } else {
+      _razorpay.open(options);
     }
   }
 
